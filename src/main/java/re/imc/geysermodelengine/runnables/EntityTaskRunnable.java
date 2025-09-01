@@ -102,8 +102,7 @@ public class EntityTaskRunnable {
     }
 
     public void sendEntityData(ModelEntityData model, Player player, int delay) {
-        //TODO with ModelEngine, you can define the namespace inside the config, make an option to change it here as well? if i'm right about this
-        EntityUtils.setCustomEntity(player, model.getEntity().getEntityId(), "modelengine:" + model.getActiveModel().getBlueprint().getName().toLowerCase());
+        EntityUtils.setCustomEntity(player, model.getEntity().getEntityId(), plugin.getConfigManager().getConfig().getString("namespace") + ":" + model.getActiveModel().getBlueprint().getName().toLowerCase());
 
         plugin.getSchedulerPool().schedule(() -> {
             model.getEntity().sendSpawnPacket(Collections.singletonList(player));
@@ -163,14 +162,15 @@ public class EntityTaskRunnable {
 
         Map<String, Integer> intUpdates = new HashMap<>();
         int i = 0;
+
         for (Integer integer : booleanPacker.mapBooleansToInts(boneUpdates)) {
-            intUpdates.put("modelengine:bone" + i, integer);
+            intUpdates.put(plugin.getConfigManager().getConfig().getString("namespace") + ":bone" + i, integer);
             i++;
         }
 
         i = 0;
         for (Integer integer : booleanPacker.mapBooleansToInts(animUpdates)) {
-            intUpdates.put("modelengine:anim" + i, integer);
+            intUpdates.put(plugin.getConfigManager().getConfig().getString("namespace") + ":anim" + i, integer);
             i++;
         }
 
