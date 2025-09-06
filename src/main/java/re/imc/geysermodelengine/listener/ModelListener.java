@@ -1,22 +1,15 @@
 package re.imc.geysermodelengine.listener;
 
-import com.ticxo.modelengine.api.events.*;
-import com.ticxo.modelengine.api.model.ActiveModel;
-import org.apache.commons.lang3.tuple.Pair;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.world.WorldInitEvent;
 import org.geysermc.floodgate.api.FloodgateApi;
 import re.imc.geysermodelengine.GeyserModelEngine;
-import re.imc.geysermodelengine.managers.model.data.ModelEntityData;
-
-import java.util.Map;
 
 public class ModelListener implements Listener {
 
@@ -26,45 +19,19 @@ public class ModelListener implements Listener {
         this.plugin = plugin;
     }
 
-    @EventHandler(priority = EventPriority.MONITOR)
-    public void onAddModel(AddModelEvent event) {
-        if (event.isCancelled()) return;
-        plugin.getModelManager().create(event.getTarget(), event.getModel());
-    }
-
-    @EventHandler(priority = EventPriority.MONITOR)
-    public void onModelMount(ModelMountEvent event) {
-        Map<ActiveModel, ModelEntityData> map = plugin.getModelManager().getEntitiesCache().get(event.getVehicle().getModeledEntity().getBase().getEntityId());
-        if (!event.isDriver()) return;
-
-        ModelEntityData model = map.get(event.getVehicle());
-
-        if (model != null && event.getPassenger() instanceof Player player) {
-            plugin.getModelManager().getDriversCache().put(player.getUniqueId(), Pair.of(event.getVehicle(), event.getSeat()));
-        }
-    }
-
-    @EventHandler(priority = EventPriority.MONITOR)
-    public void onModelDismount(ModelDismountEvent event) {
-        if (event.getPassenger() instanceof Player player) {
-            plugin.getModelManager().getDriversCache().remove(player.getUniqueId());
-        }
-    }
-
     /*
      / xSquishyLiam:
-     / I'm wondering if we could move this to more of a player loading chunks instead of checking all worlds via PlayerChunkLoadEvent?
+     / May change this into a better system?
     */
     @EventHandler
     public void onWorldInit(WorldInitEvent event) {
         World world = event.getWorld();
-        world.getEntities().forEach(entity -> plugin.getModelManager().processEntities(entity));
+        world.getEntities().forEach(entity -> plugin.getModelManager().getModelHandler().processEntities(plugin, entity));
     }
 
     /*
-     / xSquishyLiam - conclusion:
-     / I'm assuming when a player joins the server the packet for mob spawning is instant so the client resyncs itself
-     / hence why the pig is shown instead of going invisible and not displaying the texture of the modeled mob
+     / xSquishyLiam:
+     / A runDelay make sures the client doesn't see pigs on login due to the client resyncing themselves back to normal
     */
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {

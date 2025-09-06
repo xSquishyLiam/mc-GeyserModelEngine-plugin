@@ -15,7 +15,11 @@ dependencies:
       required: true
     packetevents:
       required: true
-    ModelEngine:
-      required: true
     floodgate:
       required: true
+    ModelEngine:
+      required: false
+      join-classpath: true
+    BetterModel:
+      required: false
+      join-classpath: true

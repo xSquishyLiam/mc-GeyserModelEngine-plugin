@@ -11,7 +11,7 @@ import com.ticxo.modelengine.api.model.bone.ModelBone;
 import me.zimzaza4.geyserutils.spigot.api.EntityUtils;
 import org.bukkit.entity.Player;
 import re.imc.geysermodelengine.GeyserModelEngine;
-import re.imc.geysermodelengine.managers.model.data.ModelEntityData;
+import re.imc.geysermodelengine.managers.model.entity.ModelEngineEntityData;
 import re.imc.geysermodelengine.packet.entity.PacketEntity;
 import re.imc.geysermodelengine.util.BooleanPacker;
 
@@ -26,7 +26,7 @@ public class EntityTaskRunnable {
 
     private final GeyserModelEngine plugin;
 
-    private final ModelEntityData model;
+    private final ModelEngineEntityData model;
 
     private int tick = 0;
     private int syncTick = 0;
@@ -39,11 +39,9 @@ public class EntityTaskRunnable {
     private final ConcurrentHashMap<String, Integer> lastIntSet = new ConcurrentHashMap<>();
     private final Cache<String, Boolean> lastPlayedAnim = CacheBuilder.newBuilder().expireAfterWrite(30, TimeUnit.MILLISECONDS).build();
 
-    private final BooleanPacker booleanPacker = new BooleanPacker();
-
     private final ScheduledFuture scheduledFuture;
 
-    public EntityTaskRunnable(GeyserModelEngine plugin, ModelEntityData model) {
+    public EntityTaskRunnable(GeyserModelEngine plugin, ModelEngineEntityData model) {
         this.plugin = plugin;
 
         this.model = model;
@@ -70,7 +68,8 @@ public class EntityTaskRunnable {
             entity.remove();
 
             plugin.getModelManager().getEntitiesCache().remove(modeledEntity.getBase().getEntityId());
-            plugin.getModelManager().getModelEntitiesCache().remove(entity.getEntityId());
+            plugin.getModelManager().getModelEntitiesCache().remove(modeledEntity.getBase().getEntityId());
+
             cancel();
             return;
         }
@@ -93,31 +92,32 @@ public class EntityTaskRunnable {
 
         if (viewers.isEmpty()) return;
 
-        plugin.getEntityTaskManager().sendScale(model, viewers, lastScale, false);
-        plugin.getEntityTaskManager().sendColor(model, viewers, lastColor, false);
+        plugin.getEntityTaskManager().getPropertyHandler().sendScale(model, viewers, lastScale, false);
+        plugin.getEntityTaskManager().getPropertyHandler().sendColor(model, viewers, lastColor, false);
     }
 
     public void cancel() {
         scheduledFuture.cancel(true);
     }
 
-    public void sendEntityData(ModelEntityData model, Player player, int delay) {
+    public void sendEntityData(ModelEngineEntityData model, Player player, int delay) {
         EntityUtils.setCustomEntity(player, model.getEntity().getEntityId(), plugin.getConfigManager().getConfig().getString("namespace") + ":" + model.getActiveModel().getBlueprint().getName().toLowerCase());
 
         plugin.getSchedulerPool().schedule(() -> {
             model.getEntity().sendSpawnPacket(Collections.singletonList(player));
 
             plugin.getSchedulerPool().schedule(() -> {
-                plugin.getEntityTaskManager().sendHitBox(model, player);
-                plugin.getEntityTaskManager().sendScale(model, Collections.singleton(player), lastScale, true);
-                plugin.getEntityTaskManager().sendColor(model, Collections.singleton(player), lastColor, true);
+                plugin.getEntityTaskManager().getPropertyHandler().sendHitBox(model, player);
+
+                plugin.getEntityTaskManager().getPropertyHandler().sendScale(model, Collections.singleton(player), lastScale, true);
+                plugin.getEntityTaskManager().getPropertyHandler().sendColor(model, Collections.singleton(player), lastColor, true);
 
                 updateEntityProperties(model, Collections.singleton(player), true);
             }, 500, TimeUnit.MILLISECONDS);
         }, delay * 50L, TimeUnit.MILLISECONDS);
     }
 
-    public void updateEntityProperties(ModelEntityData model, Collection<Player> players, boolean firstSend, String... forceAnims) {
+    public void updateEntityProperties(ModelEngineEntityData model, Collection<Player> players, boolean firstSend, String... forceAnims) {
         int entity = model.getEntity().getEntityId();
         Set<String> forceAnimSet = Set.of(forceAnims);
 
@@ -163,13 +163,13 @@ public class EntityTaskRunnable {
         Map<String, Integer> intUpdates = new HashMap<>();
         int i = 0;
 
-        for (Integer integer : booleanPacker.mapBooleansToInts(boneUpdates)) {
+        for (Integer integer : BooleanPacker.mapBooleansToInts(boneUpdates)) {
             intUpdates.put(plugin.getConfigManager().getConfig().getString("namespace") + ":bone" + i, integer);
             i++;
         }
 
         i = 0;
-        for (Integer integer : booleanPacker.mapBooleansToInts(animUpdates)) {
+        for (Integer integer : BooleanPacker.mapBooleansToInts(animUpdates)) {
             intUpdates.put(plugin.getConfigManager().getConfig().getString("namespace") + ":anim" + i, integer);
             i++;
         }
@@ -193,7 +193,7 @@ public class EntityTaskRunnable {
         }
     }
 
-    private void processBone(ModelEntityData model, BlueprintBone bone, Map<String, Boolean> map) {
+    private void processBone(ModelEngineEntityData model, BlueprintBone bone, Map<String, Boolean> map) {
         String name = plugin.getEntityTaskManager().unstripName(bone).toLowerCase();
         if (name.equals("hitbox") ||
                 name.equals("shadow") ||

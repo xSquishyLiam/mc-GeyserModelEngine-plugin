@@ -1,13 +1,15 @@
 package re.imc.geysermodelengine.managers.model;
 
-import com.ticxo.modelengine.api.ModelEngineAPI;
 import com.ticxo.modelengine.api.model.ActiveModel;
-import com.ticxo.modelengine.api.model.ModeledEntity;
 import com.ticxo.modelengine.api.model.bone.type.Mount;
 import org.apache.commons.lang3.tuple.Pair;
-import org.bukkit.entity.Entity;
+import org.bukkit.Bukkit;
 import re.imc.geysermodelengine.GeyserModelEngine;
-import re.imc.geysermodelengine.managers.model.data.ModelEntityData;
+import re.imc.geysermodelengine.managers.model.entity.EntityData;
+import re.imc.geysermodelengine.managers.model.model.Model;
+import re.imc.geysermodelengine.managers.model.modelhandler.BetterModelHandler;
+import re.imc.geysermodelengine.managers.model.modelhandler.ModelEngineHandler;
+import re.imc.geysermodelengine.managers.model.modelhandler.ModelHandler;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -16,57 +18,47 @@ public class ModelManager {
 
     private final GeyserModelEngine plugin;
 
+    private ModelHandler modelHandler;
+
     private final HashSet<UUID> playerJoinedCache = new HashSet<>();
 
-    private final ConcurrentHashMap<Integer, Map<ActiveModel, ModelEntityData>> entitiesCache = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<Integer, ModelEntityData> modelEntitiesCache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Integer, Model> modelEntitiesCache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Integer, Map<Model, EntityData>> entitiesCache = new ConcurrentHashMap<>();
 
+    // MEG ONLY
     private final ConcurrentHashMap<UUID, Pair<ActiveModel, Mount>> driversCache = new ConcurrentHashMap<>();
 
     public ModelManager(GeyserModelEngine plugin) {
         this.plugin = plugin;
-    }
 
-    public void create(ModeledEntity entity, ActiveModel model) {
-        ModelEntityData modelEntity = new ModelEntityData(plugin, entity, model);
-        int id = entity.getBase().getEntityId();
-
-        Map<ActiveModel, ModelEntityData> map = entitiesCache.computeIfAbsent(id, k -> new HashMap<>());
-
-        for (Map.Entry<ActiveModel, ModelEntityData> entry : map.entrySet()) {
-            if (entry.getKey() !=  model && entry.getKey().getBlueprint().getName().equals(model.getBlueprint().getName())) {
-                return;
-            }
+        if (Bukkit.getPluginManager().getPlugin("ModelEngine") != null) {
+            this.modelHandler = new ModelEngineHandler();
+            plugin.getLogger().info("Using ModelEngine handler!");
+        } else if (Bukkit.getPluginManager().getPlugin("BetterModel") != null) {
+            this.modelHandler = new BetterModelHandler();
+            plugin.getLogger().info("Using BetterModel handler!");
+        } else {
+            plugin.getLogger().severe("No supported model engine found!");
+            plugin.getServer().getPluginManager().disablePlugin(plugin);
+            return;
         }
 
-        map.put(model, modelEntity);
+        modelHandler.loadListeners(plugin);
     }
 
-    public void processEntities(Entity entity) {
-        if (entitiesCache.containsKey(entity.getEntityId())) return;
-
-        ModeledEntity modeledEntity = ModelEngineAPI.getModeledEntity(entity);
-        if (modeledEntity == null) return;
-
-        Optional<ActiveModel> model = modeledEntity.getModels().values().stream().findFirst();
-        model.ifPresent(m -> create(modeledEntity, m));
-    }
-
-    public void removeEntities() {
-        for (Map<ActiveModel, ModelEntityData> entities : entitiesCache.values()) {
-            entities.forEach((model, modelEntity) -> modelEntity.getEntity().remove());
-        }
+    public ModelHandler getModelHandler() {
+        return modelHandler;
     }
 
     public HashSet<UUID> getPlayerJoinedCache() {
         return playerJoinedCache;
     }
 
-    public ConcurrentHashMap<Integer, Map<ActiveModel, ModelEntityData>> getEntitiesCache() {
+    public ConcurrentHashMap<Integer, Map<Model, EntityData>> getEntitiesCache() {
         return entitiesCache;
     }
 
-    public ConcurrentHashMap<Integer, ModelEntityData> getModelEntitiesCache() {
+    public ConcurrentHashMap<Integer, Model> getModelEntitiesCache() {
         return modelEntitiesCache;
     }
 

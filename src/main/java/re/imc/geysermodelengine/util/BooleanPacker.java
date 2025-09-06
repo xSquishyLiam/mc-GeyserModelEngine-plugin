@@ -7,9 +7,9 @@ import java.util.Map;
 
 public class BooleanPacker {
 
-    private final int MAX_BOOLEANS = 24;
+    private static final int MAX_BOOLEANS = 24;
 
-    public int booleansToInt(List<Boolean> booleans) {
+    public static int booleansToInt(List<Boolean> booleans) {
         int result = 0;
         int i = 1;
 
@@ -23,7 +23,7 @@ public class BooleanPacker {
         return result;
     }
 
-    public int mapBooleansToInt(Map<String, Boolean> booleanMap) {
+    public static int mapBooleansToInt(Map<String, Boolean> booleanMap) {
         int result = 0;
         int i = 1;
 
@@ -39,7 +39,7 @@ public class BooleanPacker {
         return result;
     }
 
-    public List<Integer> booleansToInts(List<Boolean> booleans) {
+    public static List<Integer> booleansToInts(List<Boolean> booleans) {
         List<Integer> results = new ArrayList<>();
         int result = 0;
         int i = 1;
@@ -62,7 +62,7 @@ public class BooleanPacker {
         return results;
     }
 
-    public List<Integer> mapBooleansToInts(Map<String, Boolean> booleanMap) {
+    public static List<Integer> mapBooleansToInts(Map<String, Boolean> booleanMap) {
         List<String> keys = new ArrayList<>(booleanMap.keySet());
         List<Boolean> booleans = new ArrayList<>();
 

@@ -1,4 +1,4 @@
-package re.imc.geysermodelengine.managers.model.data;
+package re.imc.geysermodelengine.managers.model.entity;
 
 import com.github.retrooper.packetevents.protocol.entity.type.EntityTypes;
 import com.google.common.collect.Sets;
@@ -7,16 +7,17 @@ import com.ticxo.modelengine.api.model.ModeledEntity;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import re.imc.geysermodelengine.GeyserModelEngine;
+import re.imc.geysermodelengine.managers.model.model.Model;
 import re.imc.geysermodelengine.packet.entity.PacketEntity;
 import re.imc.geysermodelengine.runnables.EntityTaskRunnable;
 
 import java.util.Set;
 
-public class ModelEntityData {
+public class ModelEngineEntityData implements EntityData {
 
     private final GeyserModelEngine plugin;
 
-    private PacketEntity entity;
+    private final PacketEntity entity;
 
     private final Set<Player> viewers = Sets.newConcurrentHashSet();
 
@@ -26,36 +27,44 @@ public class ModelEntityData {
 
     private EntityTaskRunnable entityTask;
 
-    public ModelEntityData(GeyserModelEngine plugin, ModeledEntity modeledEntity, ActiveModel model) {
+    public ModelEngineEntityData(GeyserModelEngine plugin, ModeledEntity modeledEntity, ActiveModel activeModel) {
         this.plugin = plugin;
 
         this.modeledEntity = modeledEntity;
-        this.activeModel = model;
-        this.entity = spawnEntity();
+        this.activeModel = activeModel;
+        this.entity = new PacketEntity(EntityTypes.PIG, viewers, modeledEntity.getBase().getLocation());
 
         runEntityTask();
     }
 
+    @Override
     public void teleportToModel() {
         Location location = modeledEntity.getBase().getLocation();
         entity.teleport(location);
-    }
-
-    public PacketEntity spawnEntity() {
-        entity = new PacketEntity(EntityTypes.PIG, viewers, modeledEntity.getBase().getLocation());
-        return entity;
     }
 
     public void runEntityTask() {
         entityTask = new EntityTaskRunnable(plugin, this);
     }
 
+    @Override
     public PacketEntity getEntity() {
         return entity;
     }
 
+    @Override
     public Set<Player> getViewers() {
         return viewers;
+    }
+
+    @Override
+    public void remove() {
+
+    }
+
+    @Override
+    public EntityTaskRunnable getEntityTask() {
+        return entityTask;
     }
 
     public ModeledEntity getModeledEntity() {
@@ -64,9 +73,5 @@ public class ModelEntityData {
 
     public ActiveModel getActiveModel() {
         return activeModel;
-    }
-
-    public EntityTaskRunnable getEntityTask() {
-        return entityTask;
     }
 }

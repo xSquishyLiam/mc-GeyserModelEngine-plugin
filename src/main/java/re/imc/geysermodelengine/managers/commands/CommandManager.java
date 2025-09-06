@@ -21,7 +21,7 @@ public class CommandManager {
         for (Class<?> clazz : new Reflections(path).getSubTypesOf(CommandManagers.class)) {
             try {
                 CommandManagers commandManager = (CommandManagers) clazz.getDeclaredConstructor(GeyserModelEngine.class).newInstance(plugin);
-                plugin.getLogger().warning("Loading Command Manager - " + commandManager.name());
+                plugin.getLogger().info("Loading Command Manager - " + commandManager.name());
                 commandManagersCache.put(commandManager.name(), commandManager);
             } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException err) {
                 plugin.getLogger().severe("Failed to load Command Manager " + clazz.getName());
