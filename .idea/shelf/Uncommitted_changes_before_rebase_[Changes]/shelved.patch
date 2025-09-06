@@ -1,0 +1,1372 @@
+Index: src/main/java/re/imc/geysermodelengine/GeyserModelEngine.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package re.imc.geysermodelengine;\r\n\r\nimport com.github.retrooper.packetevents.PacketEvents;\r\nimport com.github.retrooper.packetevents.event.PacketListenerPriority;\r\nimport dev.jorel.commandapi.CommandAPI;\r\nimport dev.jorel.commandapi.CommandAPIBukkitConfig;\r\nimport io.github.retrooper.packetevents.factory.spigot.SpigotPacketEventsBuilder;\r\nimport org.bstats.bukkit.Metrics;\r\nimport org.bukkit.Bukkit;\r\nimport org.bukkit.plugin.java.JavaPlugin;\r\nimport re.imc.geysermodelengine.listener.ModelListener;\r\nimport re.imc.geysermodelengine.listener.MountPacketListener;\r\nimport re.imc.geysermodelengine.managers.ConfigManager;\r\nimport re.imc.geysermodelengine.managers.commands.CommandManager;\r\nimport re.imc.geysermodelengine.managers.model.EntityTaskManager;\r\nimport re.imc.geysermodelengine.managers.model.ModelManager;\r\nimport re.imc.geysermodelengine.runnables.BedrockMountControlRunnable;\r\nimport re.imc.geysermodelengine.runnables.UpdateTaskRunnable;\r\n\r\nimport java.util.concurrent.*;\r\n\r\npublic class GeyserModelEngine extends JavaPlugin {\r\n\r\n    private ConfigManager configManager;\r\n\r\n    private CommandManager commandManager;\r\n\r\n    private ModelManager modelManager;\r\n    private EntityTaskManager entityTaskManager;\r\n\r\n    private ScheduledExecutorService schedulerPool;\r\n\r\n    @Override\r\n    public void onLoad() {\r\n        PacketEvents.setAPI(SpigotPacketEventsBuilder.build(this));\r\n        PacketEvents.getAPI().load();\r\n\r\n        CommandAPI.onLoad(new CommandAPIBukkitConfig(this));\r\n    }\r\n\r\n    @Override\r\n    public void onEnable() {\r\n        loadHooks();\r\n        loadManagers();\r\n        loadRunnables();\r\n\r\n        loadBStats();\r\n\r\n        PacketEvents.getAPI().getEventManager().registerListener(new MountPacketListener(this), PacketListenerPriority.NORMAL);\r\n\r\n        Bukkit.getPluginManager().registerEvents(new ModelListener(this), this);\r\n    }\r\n\r\n    @Override\r\n    public void onDisable() {\r\n        PacketEvents.getAPI().terminate();\r\n\r\n        this.modelManager.removeEntities();\r\n\r\n        CommandAPI.onDisable();\r\n    }\r\n\r\n    private void loadHooks() {\r\n        PacketEvents.getAPI().init();\r\n        CommandAPI.onEnable();\r\n    }\r\n\r\n    private void loadBStats() {\r\n        if (configManager.getConfig().getBoolean(\"bstats\", true)) new Metrics(this, 26981);\r\n    }\r\n\r\n    private void loadManagers() {\r\n        this.configManager = new ConfigManager(this);\r\n\r\n        this.commandManager = new CommandManager(this);\r\n\r\n        this.modelManager = new ModelManager(this);\r\n        this.entityTaskManager = new EntityTaskManager(this);\r\n    }\r\n\r\n    private void loadRunnables() {\r\n        this.schedulerPool = Executors.newScheduledThreadPool(configManager.getConfig().getInt(\"thread-pool-size\", 4));\r\n\r\n        Bukkit.getAsyncScheduler().runAtFixedRate(this, new UpdateTaskRunnable(this), 10, configManager.getConfig().getLong(\"entity-position-update-period\", 35), TimeUnit.MILLISECONDS);\r\n        Bukkit.getAsyncScheduler().runAtFixedRate(this, new BedrockMountControlRunnable(this), 1, 1, TimeUnit.MILLISECONDS);\r\n    }\r\n\r\n    public ConfigManager getConfigManager() {\r\n        return configManager;\r\n    }\r\n\r\n    public CommandManager getCommandManager() {\r\n        return commandManager;\r\n    }\r\n\r\n    public ModelManager getModelManager() {\r\n        return modelManager;\r\n    }\r\n\r\n    public EntityTaskManager getEntityTaskManager() {\r\n        return entityTaskManager;\r\n    }\r\n\r\n    public ScheduledExecutorService getSchedulerPool() {\r\n        return schedulerPool;\r\n    }\r\n}\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/re/imc/geysermodelengine/GeyserModelEngine.java b/src/main/java/re/imc/geysermodelengine/GeyserModelEngine.java
+--- a/src/main/java/re/imc/geysermodelengine/GeyserModelEngine.java	(revision b6425ffa51b4e18318b1d2318db705909064ac55)
++++ b/src/main/java/re/imc/geysermodelengine/GeyserModelEngine.java	(date 1757196497524)
+@@ -55,7 +55,7 @@
+     public void onDisable() {
+         PacketEvents.getAPI().terminate();
+ 
+-        this.modelManager.removeEntities();
++        this.modelManager.getModelHandler().removeEntities(this);
+ 
+         CommandAPI.onDisable();
+     }
+Index: src/main/java/re/imc/geysermodelengine/runnables/EntityTaskRunnable.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package re.imc.geysermodelengine.runnables;\r\n\r\nimport com.google.common.cache.Cache;\r\nimport com.google.common.cache.CacheBuilder;\r\nimport com.ticxo.modelengine.api.animation.BlueprintAnimation;\r\nimport com.ticxo.modelengine.api.animation.handler.AnimationHandler;\r\nimport com.ticxo.modelengine.api.generator.blueprint.BlueprintBone;\r\nimport com.ticxo.modelengine.api.model.ActiveModel;\r\nimport com.ticxo.modelengine.api.model.ModeledEntity;\r\nimport com.ticxo.modelengine.api.model.bone.ModelBone;\r\nimport me.zimzaza4.geyserutils.spigot.api.EntityUtils;\r\nimport org.bukkit.entity.Player;\r\nimport re.imc.geysermodelengine.GeyserModelEngine;\r\nimport re.imc.geysermodelengine.managers.model.data.ModelEntityData;\r\nimport re.imc.geysermodelengine.packet.entity.PacketEntity;\r\nimport re.imc.geysermodelengine.util.BooleanPacker;\r\n\r\nimport java.awt.*;\r\nimport java.util.*;\r\nimport java.util.List;\r\nimport java.util.concurrent.ConcurrentHashMap;\r\nimport java.util.concurrent.ScheduledFuture;\r\nimport java.util.concurrent.TimeUnit;\r\n\r\npublic class EntityTaskRunnable {\r\n\r\n    private final GeyserModelEngine plugin;\r\n\r\n    private final ModelEntityData model;\r\n\r\n    private int tick = 0;\r\n    private int syncTick = 0;\r\n\r\n    private float lastScale = -1.0f;\r\n    private Color lastColor = null;\r\n\r\n    private boolean removed = false;\r\n\r\n    private final ConcurrentHashMap<String, Integer> lastIntSet = new ConcurrentHashMap<>();\r\n    private final Cache<String, Boolean> lastPlayedAnim = CacheBuilder.newBuilder().expireAfterWrite(30, TimeUnit.MILLISECONDS).build();\r\n\r\n    private final BooleanPacker booleanPacker = new BooleanPacker();\r\n\r\n    private final ScheduledFuture scheduledFuture;\r\n\r\n    public EntityTaskRunnable(GeyserModelEngine plugin, ModelEntityData model) {\r\n        this.plugin = plugin;\r\n\r\n        this.model = model;\r\n\r\n        plugin.getEntityTaskManager().sendHitBoxToAll(model);\r\n\r\n        scheduledFuture = plugin.getSchedulerPool().scheduleAtFixedRate(this::runAsync, 0, 20, TimeUnit.MILLISECONDS);\r\n    }\r\n\r\n    public void runAsync() {\r\n        plugin.getEntityTaskManager().checkViewers(model, model.getViewers());\r\n\r\n        PacketEntity entity = model.getEntity();\r\n        if (entity.isDead()) return;\r\n\r\n        model.teleportToModel();\r\n\r\n        Set<Player> viewers = model.getViewers();\r\n        ActiveModel activeModel = model.getActiveModel();\r\n        ModeledEntity modeledEntity = model.getModeledEntity();\r\n\r\n        if (activeModel.isDestroyed() || activeModel.isRemoved()) {\r\n            removed = true;\r\n            entity.remove();\r\n\r\n            plugin.getModelManager().getEntitiesCache().remove(modeledEntity.getBase().getEntityId());\r\n            plugin.getModelManager().getModelEntitiesCache().remove(entity.getEntityId());\r\n            cancel();\r\n            return;\r\n        }\r\n\r\n        if (tick % 5 == 0) {\r\n            if (tick % 40 == 0) {\r\n                for (Player viewer : Set.copyOf(viewers)) {\r\n                    if (!plugin.getEntityTaskManager().canSee(viewer, model.getEntity())) {\r\n                        viewers.remove(viewer);\r\n                    }\r\n                }\r\n            }\r\n        }\r\n\r\n        tick ++;\r\n        if (tick > 400) {\r\n            tick = 0;\r\n            plugin.getEntityTaskManager().sendHitBoxToAll(model);\r\n        }\r\n\r\n        if (viewers.isEmpty()) return;\r\n\r\n        plugin.getEntityTaskManager().sendScale(model, viewers, lastScale, false);\r\n        plugin.getEntityTaskManager().sendColor(model, viewers, lastColor, false);\r\n    }\r\n\r\n    public void cancel() {\r\n        scheduledFuture.cancel(true);\r\n    }\r\n\r\n    public void sendEntityData(ModelEntityData model, Player player, int delay) {\r\n        EntityUtils.setCustomEntity(player, model.getEntity().getEntityId(), plugin.getConfigManager().getConfig().getString(\"namespace\") + \":\" + model.getActiveModel().getBlueprint().getName().toLowerCase());\r\n\r\n        plugin.getSchedulerPool().schedule(() -> {\r\n            model.getEntity().sendSpawnPacket(Collections.singletonList(player));\r\n\r\n            plugin.getSchedulerPool().schedule(() -> {\r\n                plugin.getEntityTaskManager().sendHitBox(model, player);\r\n                plugin.getEntityTaskManager().sendScale(model, Collections.singleton(player), lastScale, true);\r\n                plugin.getEntityTaskManager().sendColor(model, Collections.singleton(player), lastColor, true);\r\n\r\n                updateEntityProperties(model, Collections.singleton(player), true);\r\n            }, 500, TimeUnit.MILLISECONDS);\r\n        }, delay * 50L, TimeUnit.MILLISECONDS);\r\n    }\r\n\r\n    public void updateEntityProperties(ModelEntityData model, Collection<Player> players, boolean firstSend, String... forceAnims) {\r\n        int entity = model.getEntity().getEntityId();\r\n        Set<String> forceAnimSet = Set.of(forceAnims);\r\n\r\n        Map<String, Boolean> boneUpdates = new HashMap<>();\r\n        Map<String, Boolean> animUpdates = new HashMap<>();\r\n        Set<String> anims = new HashSet<>();\r\n\r\n        model.getActiveModel().getBlueprint().getBones().forEach((s, bone) -> processBone(model, bone, boneUpdates));\r\n\r\n        AnimationHandler handler = model.getActiveModel().getAnimationHandler();\r\n        Set<String> priority = model.getActiveModel().getBlueprint().getAnimationDescendingPriority();\r\n        for (String animId : priority) {\r\n            if (handler.isPlayingAnimation(animId)) {\r\n                BlueprintAnimation anim = model.getActiveModel().getBlueprint().getAnimations().get(animId);\r\n\r\n                anims.add(animId);\r\n                if (anim.isOverride() && anim.getLoopMode() == BlueprintAnimation.LoopMode.ONCE) {\r\n                    break;\r\n                }\r\n            }\r\n        }\r\n\r\n        for (String id : priority) {\r\n            if (anims.contains(id)) {\r\n                animUpdates.put(id, true);\r\n            } else {\r\n                animUpdates.put(id, false);\r\n            }\r\n        }\r\n\r\n        Set<String> lastPlayed = new HashSet<>(lastPlayedAnim.asMap().keySet());\r\n\r\n        for (Map.Entry<String, Boolean> anim : animUpdates.entrySet()) {\r\n            if (anim.getValue()) {\r\n                lastPlayedAnim.put(anim.getKey(), true);\r\n            }\r\n        }\r\n\r\n        for (String anim : lastPlayed) animUpdates.put(anim, true);\r\n\r\n        if (boneUpdates.isEmpty() && animUpdates.isEmpty()) return;\r\n\r\n        Map<String, Integer> intUpdates = new HashMap<>();\r\n        int i = 0;\r\n\r\n        for (Integer integer : booleanPacker.mapBooleansToInts(boneUpdates)) {\r\n            intUpdates.put(plugin.getConfigManager().getConfig().getString(\"namespace\") + \":bone\" + i, integer);\r\n            i++;\r\n        }\r\n\r\n        i = 0;\r\n        for (Integer integer : booleanPacker.mapBooleansToInts(animUpdates)) {\r\n            intUpdates.put(plugin.getConfigManager().getConfig().getString(\"namespace\") + \":anim\" + i, integer);\r\n            i++;\r\n        }\r\n\r\n        if (!firstSend) {\r\n            if (intUpdates.equals(lastIntSet)) {\r\n                return;\r\n            } else {\r\n                lastIntSet.clear();\r\n                lastIntSet.putAll(intUpdates);\r\n            }\r\n        }\r\n\r\n        if (plugin.getConfigManager().getConfig().getBoolean(\"debug\")) plugin.getLogger().info(animUpdates.toString());\r\n\r\n        List<String> list = new ArrayList<>(boneUpdates.keySet());\r\n        Collections.sort(list);\r\n\r\n        for (Player player : players) {\r\n            EntityUtils.sendIntProperties(player, entity, intUpdates);\r\n        }\r\n    }\r\n\r\n    private void processBone(ModelEntityData model, BlueprintBone bone, Map<String, Boolean> map) {\r\n        String name = plugin.getEntityTaskManager().unstripName(bone).toLowerCase();\r\n        if (name.equals(\"hitbox\") ||\r\n                name.equals(\"shadow\") ||\r\n                name.equals(\"mount\") ||\r\n                name.startsWith(\"p_\") ||\r\n                name.startsWith(\"b_\") ||\r\n                name.startsWith(\"ob_\")) {\r\n            return;\r\n        }\r\n\r\n        for (BlueprintBone blueprintBone : bone.getChildren().values()) processBone(model, blueprintBone, map);\r\n\r\n        ModelBone activeBone = model.getActiveModel().getBones().get(bone.getName());\r\n\r\n        boolean visible = false;\r\n        if (activeBone != null) visible = activeBone.isVisible();\r\n\r\n        map.put(name, visible);\r\n    }\r\n\r\n    public void setTick(int tick) {\r\n        this.tick = tick;\r\n    }\r\n\r\n    public void setSyncTick(int syncTick) {\r\n        this.syncTick = syncTick;\r\n    }\r\n\r\n    public void setRemoved(boolean removed) {\r\n        this.removed = removed;\r\n    }\r\n\r\n    public void setLastScale(float lastScale) {\r\n        this.lastScale = lastScale;\r\n    }\r\n\r\n    public int getTick() {\r\n        return tick;\r\n    }\r\n\r\n    public int getSyncTick() {\r\n        return syncTick;\r\n    }\r\n\r\n    public void setLastColor(Color lastColor) {\r\n        this.lastColor = lastColor;\r\n    }\r\n\r\n    public float getLastScale() {\r\n        return lastScale;\r\n    }\r\n\r\n    public Color getLastColor() {\r\n        return lastColor;\r\n    }\r\n\r\n    public boolean isRemoved() {\r\n        return removed;\r\n    }\r\n\r\n    public ConcurrentHashMap<String, Integer> getLastIntSet() {\r\n        return lastIntSet;\r\n    }\r\n\r\n    public Cache<String, Boolean> getLastPlayedAnim() {\r\n        return lastPlayedAnim;\r\n    }\r\n\r\n    public ScheduledFuture getScheduledFuture() {\r\n        return scheduledFuture;\r\n    }\r\n}\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/re/imc/geysermodelengine/runnables/EntityTaskRunnable.java b/src/main/java/re/imc/geysermodelengine/runnables/EntityTaskRunnable.java
+--- a/src/main/java/re/imc/geysermodelengine/runnables/EntityTaskRunnable.java	(revision b6425ffa51b4e18318b1d2318db705909064ac55)
++++ b/src/main/java/re/imc/geysermodelengine/runnables/EntityTaskRunnable.java	(date 1757189940025)
+@@ -11,7 +11,7 @@
+ import me.zimzaza4.geyserutils.spigot.api.EntityUtils;
+ import org.bukkit.entity.Player;
+ import re.imc.geysermodelengine.GeyserModelEngine;
+-import re.imc.geysermodelengine.managers.model.data.ModelEntityData;
++import re.imc.geysermodelengine.managers.model.entity.ModelEngineEntityData;
+ import re.imc.geysermodelengine.packet.entity.PacketEntity;
+ import re.imc.geysermodelengine.util.BooleanPacker;
+ 
+@@ -26,7 +26,7 @@
+ 
+     private final GeyserModelEngine plugin;
+ 
+-    private final ModelEntityData model;
++    private final ModelEngineEntityData model;
+ 
+     private int tick = 0;
+     private int syncTick = 0;
+@@ -39,11 +39,9 @@
+     private final ConcurrentHashMap<String, Integer> lastIntSet = new ConcurrentHashMap<>();
+     private final Cache<String, Boolean> lastPlayedAnim = CacheBuilder.newBuilder().expireAfterWrite(30, TimeUnit.MILLISECONDS).build();
+ 
+-    private final BooleanPacker booleanPacker = new BooleanPacker();
+-
+     private final ScheduledFuture scheduledFuture;
+ 
+-    public EntityTaskRunnable(GeyserModelEngine plugin, ModelEntityData model) {
++    public EntityTaskRunnable(GeyserModelEngine plugin, ModelEngineEntityData model) {
+         this.plugin = plugin;
+ 
+         this.model = model;
+@@ -70,7 +68,8 @@
+             entity.remove();
+ 
+             plugin.getModelManager().getEntitiesCache().remove(modeledEntity.getBase().getEntityId());
+-            plugin.getModelManager().getModelEntitiesCache().remove(entity.getEntityId());
++            plugin.getModelManager().getModelEntitiesCache().remove(modeledEntity.getBase().getEntityId());
++
+             cancel();
+             return;
+         }
+@@ -93,31 +92,32 @@
+ 
+         if (viewers.isEmpty()) return;
+ 
+-        plugin.getEntityTaskManager().sendScale(model, viewers, lastScale, false);
+-        plugin.getEntityTaskManager().sendColor(model, viewers, lastColor, false);
++        plugin.getEntityTaskManager().getPropertyHandler().sendScale(model, viewers, lastScale, false);
++        plugin.getEntityTaskManager().getPropertyHandler().sendColor(model, viewers, lastColor, false);
+     }
+ 
+     public void cancel() {
+         scheduledFuture.cancel(true);
+     }
+ 
+-    public void sendEntityData(ModelEntityData model, Player player, int delay) {
++    public void sendEntityData(ModelEngineEntityData model, Player player, int delay) {
+         EntityUtils.setCustomEntity(player, model.getEntity().getEntityId(), plugin.getConfigManager().getConfig().getString("namespace") + ":" + model.getActiveModel().getBlueprint().getName().toLowerCase());
+ 
+         plugin.getSchedulerPool().schedule(() -> {
+             model.getEntity().sendSpawnPacket(Collections.singletonList(player));
+ 
+             plugin.getSchedulerPool().schedule(() -> {
+-                plugin.getEntityTaskManager().sendHitBox(model, player);
+-                plugin.getEntityTaskManager().sendScale(model, Collections.singleton(player), lastScale, true);
+-                plugin.getEntityTaskManager().sendColor(model, Collections.singleton(player), lastColor, true);
++                plugin.getEntityTaskManager().getPropertyHandler().sendHitBox(model, player);
++
++                plugin.getEntityTaskManager().getPropertyHandler().sendScale(model, Collections.singleton(player), lastScale, true);
++                plugin.getEntityTaskManager().getPropertyHandler().sendColor(model, Collections.singleton(player), lastColor, true);
+ 
+                 updateEntityProperties(model, Collections.singleton(player), true);
+             }, 500, TimeUnit.MILLISECONDS);
+         }, delay * 50L, TimeUnit.MILLISECONDS);
+     }
+ 
+-    public void updateEntityProperties(ModelEntityData model, Collection<Player> players, boolean firstSend, String... forceAnims) {
++    public void updateEntityProperties(ModelEngineEntityData model, Collection<Player> players, boolean firstSend, String... forceAnims) {
+         int entity = model.getEntity().getEntityId();
+         Set<String> forceAnimSet = Set.of(forceAnims);
+ 
+@@ -163,13 +163,13 @@
+         Map<String, Integer> intUpdates = new HashMap<>();
+         int i = 0;
+ 
+-        for (Integer integer : booleanPacker.mapBooleansToInts(boneUpdates)) {
++        for (Integer integer : BooleanPacker.mapBooleansToInts(boneUpdates)) {
+             intUpdates.put(plugin.getConfigManager().getConfig().getString("namespace") + ":bone" + i, integer);
+             i++;
+         }
+ 
+         i = 0;
+-        for (Integer integer : booleanPacker.mapBooleansToInts(animUpdates)) {
++        for (Integer integer : BooleanPacker.mapBooleansToInts(animUpdates)) {
+             intUpdates.put(plugin.getConfigManager().getConfig().getString("namespace") + ":anim" + i, integer);
+             i++;
+         }
+@@ -193,7 +193,7 @@
+         }
+     }
+ 
+-    private void processBone(ModelEntityData model, BlueprintBone bone, Map<String, Boolean> map) {
++    private void processBone(ModelEngineEntityData model, BlueprintBone bone, Map<String, Boolean> map) {
+         String name = plugin.getEntityTaskManager().unstripName(bone).toLowerCase();
+         if (name.equals("hitbox") ||
+                 name.equals("shadow") ||
+Index: src/main/java/re/imc/geysermodelengine/managers/model/EntityTaskManager.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package re.imc.geysermodelengine.managers.model;\r\n\r\nimport com.ticxo.modelengine.api.animation.BlueprintAnimation;\r\nimport com.ticxo.modelengine.api.generator.blueprint.BlueprintBone;\r\nimport com.ticxo.modelengine.api.model.ActiveModel;\r\nimport com.ticxo.modelengine.api.model.render.DisplayRenderer;\r\nimport me.zimzaza4.geyserutils.spigot.api.EntityUtils;\r\nimport org.bukkit.Bukkit;\r\nimport org.bukkit.Location;\r\nimport org.bukkit.entity.Player;\r\nimport org.geysermc.floodgate.api.FloodgateApi;\r\nimport org.joml.Vector3fc;\r\nimport re.imc.geysermodelengine.GeyserModelEngine;\r\nimport re.imc.geysermodelengine.managers.model.data.ModelEntityData;\r\nimport re.imc.geysermodelengine.packet.entity.PacketEntity;\r\nimport re.imc.geysermodelengine.runnables.EntityTaskRunnable;\r\n\r\nimport java.awt.*;\r\nimport java.lang.reflect.Method;\r\nimport java.util.*;\r\n\r\npublic class EntityTaskManager {\r\n\r\n    private final GeyserModelEngine plugin;\r\n\r\n    private final Method scaleMethod;\r\n\r\n    public EntityTaskManager(GeyserModelEngine plugin) {\r\n        this.plugin = plugin;\r\n\r\n        try {\r\n            this.scaleMethod = ActiveModel.class.getMethod(\"getScale\");\r\n        } catch (NoSuchMethodException err) {\r\n            throw new RuntimeException(err);\r\n        }\r\n    }\r\n\r\n    public String unstripName(BlueprintBone bone) {\r\n        String name = bone.getName();\r\n        if (bone.getBehaviors().get(\"head\") != null) {\r\n            if (!bone.getBehaviors().get(\"head\").isEmpty()) return \"hi_\" + name;\r\n            return \"h_\" + name;\r\n        }\r\n\r\n        return name;\r\n    }\r\n\r\n    public void sendScale(ModelEntityData model, Collection<Player> players, float lastScale, boolean firstSend) {\r\n        try {\r\n            if (players.isEmpty()) return;\r\n\r\n            Vector3fc scale = (Vector3fc) scaleMethod.invoke(model.getActiveModel());\r\n\r\n            float average = (scale.x() + scale.y() + scale.z()) / 3;\r\n\r\n            if (!firstSend) {\r\n                if (average == lastScale) return;\r\n            }\r\n\r\n            for (Player player : players) {\r\n                EntityUtils.sendCustomScale(player, model.getEntity().getEntityId(), average);\r\n            }\r\n        } catch (Throwable ignored) {}\r\n    }\r\n\r\n    public void sendColor(ModelEntityData model, Collection<Player> players, Color lastColor, boolean firstSend) {\r\n        if (players.isEmpty()) return;\r\n\r\n        Color color = new Color(model.getActiveModel().getDefaultTint().asARGB());\r\n        if (model.getActiveModel().isMarkedHurt()) color = new Color(model.getActiveModel().getDamageTint().asARGB());\r\n\r\n        if (firstSend) {\r\n            if (color.equals(lastColor)) return;\r\n        }\r\n\r\n        for (Player player : players) {\r\n            EntityUtils.sendCustomColor(player, model.getEntity().getEntityId(), color);\r\n        }\r\n    }\r\n\r\n    public void checkViewers(ModelEntityData model, Set<Player> viewers) {\r\n        for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {\r\n            if (!FloodgateApi.getInstance().isFloodgatePlayer(onlinePlayer.getUniqueId())) continue;\r\n\r\n            if (canSee(onlinePlayer, model.getEntity())) {\r\n                if (!viewers.contains(onlinePlayer)) {\r\n                    sendSpawnPacket(model, onlinePlayer);\r\n                    viewers.add(onlinePlayer);\r\n                }\r\n            } else {\r\n                if (viewers.contains(onlinePlayer)) {\r\n                    model.getEntity().sendEntityDestroyPacket(Collections.singletonList(onlinePlayer));\r\n                    viewers.remove(onlinePlayer);\r\n                }\r\n            }\r\n        }\r\n    }\r\n\r\n    private void sendSpawnPacket(ModelEntityData model, Player onlinePlayer) {\r\n        EntityTaskRunnable task = model.getEntityTask();\r\n        boolean firstJoined = !plugin.getModelManager().getPlayerJoinedCache().contains(onlinePlayer.getUniqueId());\r\n\r\n        if (firstJoined) {\r\n            task.sendEntityData(model, onlinePlayer, plugin.getConfigManager().getConfig().getInt(\"join-send-delay\") / 50);\r\n        } else {\r\n            task.sendEntityData(model, onlinePlayer, 5);\r\n        }\r\n    }\r\n\r\n    public boolean canSee(Player player, PacketEntity entity) {\r\n        if (!player.isOnline()) return false;\r\n        if (!plugin.getModelManager().getPlayerJoinedCache().contains(player.getUniqueId())) return false;\r\n\r\n        Location playerLocation = player.getLocation().clone();\r\n        Location entityLocation = entity.getLocation().clone();\r\n        playerLocation.setY(0);\r\n        entityLocation.setY(0);\r\n\r\n        if (playerLocation.getWorld() != entityLocation.getWorld()) return false;\r\n        if (playerLocation.distanceSquared(entityLocation) > player.getSendViewDistance() * player.getSendViewDistance() * 48) return false;\r\n\r\n        return true;\r\n    }\r\n\r\n    public void sendHitBoxToAll(ModelEntityData model) {\r\n        for (Player viewer : model.getViewers()) {\r\n            EntityUtils.sendCustomHitBox(viewer, model.getEntity().getEntityId(), 0.01f, 0.01f);\r\n        }\r\n    }\r\n\r\n    public void sendHitBox(ModelEntityData model, Player viewer) {\r\n        float w = 0;\r\n\r\n        if (model.getActiveModel().isShadowVisible()) {\r\n            if (model.getActiveModel().getModelRenderer() instanceof DisplayRenderer displayRenderer) {\r\n                //    w = displayRenderer.getHitbox().getShadowRadius().get();\r\n            }\r\n        }\r\n\r\n        EntityUtils.sendCustomHitBox(viewer, model.getEntity().getEntityId(), 0.02f, w);\r\n    }\r\n\r\n    public boolean hasAnimation(ModelEntityData model, String animation) {\r\n        ActiveModel activeModel = model.getActiveModel();\r\n        BlueprintAnimation animationProperty = activeModel.getBlueprint().getAnimations().get(animation);\r\n        return !(animationProperty == null);\r\n    }\r\n\r\n    public Method getScaleMethod() {\r\n        return scaleMethod;\r\n    }\r\n}\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/re/imc/geysermodelengine/managers/model/EntityTaskManager.java b/src/main/java/re/imc/geysermodelengine/managers/model/EntityTaskManager.java
+--- a/src/main/java/re/imc/geysermodelengine/managers/model/EntityTaskManager.java	(revision b6425ffa51b4e18318b1d2318db705909064ac55)
++++ b/src/main/java/re/imc/geysermodelengine/managers/model/EntityTaskManager.java	(date 1757189954000)
+@@ -9,29 +9,35 @@
+ import org.bukkit.Location;
+ import org.bukkit.entity.Player;
+ import org.geysermc.floodgate.api.FloodgateApi;
+-import org.joml.Vector3fc;
+ import re.imc.geysermodelengine.GeyserModelEngine;
+-import re.imc.geysermodelengine.managers.model.data.ModelEntityData;
++import re.imc.geysermodelengine.managers.model.entity.EntityData;
++import re.imc.geysermodelengine.managers.model.propertyhandler.BetterModelPropertyHandler;
++import re.imc.geysermodelengine.managers.model.propertyhandler.ModelEnginePropertyHandler;
++import re.imc.geysermodelengine.managers.model.propertyhandler.PropertyHandler;
++import re.imc.geysermodelengine.managers.model.entity.ModelEngineEntityData;
+ import re.imc.geysermodelengine.packet.entity.PacketEntity;
+ import re.imc.geysermodelengine.runnables.EntityTaskRunnable;
+ 
+-import java.awt.*;
+-import java.lang.reflect.Method;
+ import java.util.*;
+ 
+ public class EntityTaskManager {
+ 
+     private final GeyserModelEngine plugin;
+ 
+-    private final Method scaleMethod;
++    private PropertyHandler propertyHandler;
+ 
+     public EntityTaskManager(GeyserModelEngine plugin) {
+         this.plugin = plugin;
+ 
+-        try {
+-            this.scaleMethod = ActiveModel.class.getMethod("getScale");
+-        } catch (NoSuchMethodException err) {
+-            throw new RuntimeException(err);
++        if (Bukkit.getPluginManager().getPlugin("ModelEngine") != null) {
++            this.propertyHandler = new ModelEnginePropertyHandler();
++            plugin.getLogger().info("Using ModelEngine property handler!");
++        } else if (Bukkit.getPluginManager().getPlugin("BetterModel") != null) {
++            this.propertyHandler = new BetterModelPropertyHandler();
++            plugin.getLogger().info("Using BetterModel property handler!");
++        } else {
++            plugin.getLogger().severe("No supported model engine found!");
++            plugin.getServer().getPluginManager().disablePlugin(plugin);
+         }
+     }
+ 
+@@ -45,40 +51,7 @@
+         return name;
+     }
+ 
+-    public void sendScale(ModelEntityData model, Collection<Player> players, float lastScale, boolean firstSend) {
+-        try {
+-            if (players.isEmpty()) return;
+-
+-            Vector3fc scale = (Vector3fc) scaleMethod.invoke(model.getActiveModel());
+-
+-            float average = (scale.x() + scale.y() + scale.z()) / 3;
+-
+-            if (!firstSend) {
+-                if (average == lastScale) return;
+-            }
+-
+-            for (Player player : players) {
+-                EntityUtils.sendCustomScale(player, model.getEntity().getEntityId(), average);
+-            }
+-        } catch (Throwable ignored) {}
+-    }
+-
+-    public void sendColor(ModelEntityData model, Collection<Player> players, Color lastColor, boolean firstSend) {
+-        if (players.isEmpty()) return;
+-
+-        Color color = new Color(model.getActiveModel().getDefaultTint().asARGB());
+-        if (model.getActiveModel().isMarkedHurt()) color = new Color(model.getActiveModel().getDamageTint().asARGB());
+-
+-        if (firstSend) {
+-            if (color.equals(lastColor)) return;
+-        }
+-
+-        for (Player player : players) {
+-            EntityUtils.sendCustomColor(player, model.getEntity().getEntityId(), color);
+-        }
+-    }
+-
+-    public void checkViewers(ModelEntityData model, Set<Player> viewers) {
++    public void checkViewers(EntityData model, Set<Player> viewers) {
+         for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
+             if (!FloodgateApi.getInstance().isFloodgatePlayer(onlinePlayer.getUniqueId())) continue;
+ 
+@@ -96,14 +69,14 @@
+         }
+     }
+ 
+-    private void sendSpawnPacket(ModelEntityData model, Player onlinePlayer) {
++    private void sendSpawnPacket(EntityData model, Player onlinePlayer) {
+         EntityTaskRunnable task = model.getEntityTask();
+         boolean firstJoined = !plugin.getModelManager().getPlayerJoinedCache().contains(onlinePlayer.getUniqueId());
+ 
+         if (firstJoined) {
+-            task.sendEntityData(model, onlinePlayer, plugin.getConfigManager().getConfig().getInt("join-send-delay") / 50);
++            task.sendEntityData((ModelEngineEntityData) model, onlinePlayer, plugin.getConfigManager().getConfig().getInt("join-send-delay") / 50);
+         } else {
+-            task.sendEntityData(model, onlinePlayer, 5);
++            task.sendEntityData((ModelEngineEntityData) model, onlinePlayer, 5);
+         }
+     }
+ 
+@@ -122,13 +95,13 @@
+         return true;
+     }
+ 
+-    public void sendHitBoxToAll(ModelEntityData model) {
++    public void sendHitBoxToAll(ModelEngineEntityData model) {
+         for (Player viewer : model.getViewers()) {
+             EntityUtils.sendCustomHitBox(viewer, model.getEntity().getEntityId(), 0.01f, 0.01f);
+         }
+     }
+ 
+-    public void sendHitBox(ModelEntityData model, Player viewer) {
++    public void sendHitBox(ModelEngineEntityData model, Player viewer) {
+         float w = 0;
+ 
+         if (model.getActiveModel().isShadowVisible()) {
+@@ -140,13 +113,13 @@
+         EntityUtils.sendCustomHitBox(viewer, model.getEntity().getEntityId(), 0.02f, w);
+     }
+ 
+-    public boolean hasAnimation(ModelEntityData model, String animation) {
++    public boolean hasAnimation(ModelEngineEntityData model, String animation) {
+         ActiveModel activeModel = model.getActiveModel();
+         BlueprintAnimation animationProperty = activeModel.getBlueprint().getAnimations().get(animation);
+         return !(animationProperty == null);
+     }
+ 
+-    public Method getScaleMethod() {
+-        return scaleMethod;
++    public PropertyHandler getPropertyHandler() {
++        return propertyHandler;
+     }
+ }
+Index: build.gradle.kts
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>plugins {\r\n    id(\"java\")\r\n    id(\"io.github.goooler.shadow\") version \"8.1.8\"\r\n}\r\n\r\ngroup = \"re.imc\"\r\nversion = \"1.0.0\"\r\n\r\nrepositories {\r\n    mavenCentral()\r\n    maven(\"https://repo.papermc.io/repository/maven-public/\")\r\n    maven(\"https://central.sonatype.com/repository/maven-snapshots/\")\r\n\r\n    maven(\"https://mvn.lumine.io/repository/maven-public/\")\r\n\r\n    maven(\"https://repo.opencollab.dev/main/\")\r\n\r\n    maven(\"https://repo.codemc.io/repository/maven-public/\")\r\n    maven(\"https://repo.codemc.io/repository/maven-releases/\")\r\n}\r\n\r\ndependencies {\r\n    compileOnly(\"io.papermc.paper:paper-api:1.21.8-R0.1-SNAPSHOT\")\r\n    implementation(\"dev.jorel:commandapi-bukkit-shade-mojang-mapped:10.1.2\")\r\n\r\n    compileOnly(\"com.ticxo.modelengine:ModelEngine:R4.0.9\")\r\n\r\n    compileOnly(files(\"libs/geyserutils-spigot-1.0-SNAPSHOT.jar\"))\r\n    compileOnly(\"org.geysermc.floodgate:api:2.2.4-SNAPSHOT\")\r\n\r\n    implementation(\"com.github.retrooper:packetevents-spigot:2.9.5\")\r\n    implementation(\"org.bstats:bstats-bukkit:3.0.2\")\r\n\r\n    implementation(\"org.reflections:reflections:0.10.2\")\r\n}\r\n\r\njava {\r\n    toolchain.languageVersion.set(JavaLanguageVersion.of(21))\r\n}\r\n\r\ntasks.compileJava {\r\n    options.encoding = \"UTF-8\"\r\n}\r\n\r\ntasks.shadowJar {\r\n    archiveFileName.set(\"${rootProject.name}-${version}.jar\")\r\n\r\n    relocate(\"dev.jorel.commandapi\", \"re.imc.geysermodelengine.libs.commandapi\")\r\n\r\n    relocate(\"com.github.retrooper\", \"re.imc.geysermodelengine.libs.com.github.retrooper.packetevents\")\r\n    relocate(\"io.github.retrooper\", \"re.imc.geysermodelengine.libs.io.github.retrooper.packetevents\")\r\n\r\n    relocate(\"org.bstats\", \"re.imc.geysermodelengine.libs.bstats\")\r\n\r\n    relocate(\"org.reflections\", \"re.imc.geysermodelengine.libs.reflections\")\r\n}\r\n\r\ntasks.build {\r\n    dependsOn(\"shadowJar\")\r\n}
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/build.gradle.kts b/build.gradle.kts
+--- a/build.gradle.kts	(revision b6425ffa51b4e18318b1d2318db705909064ac55)
++++ b/build.gradle.kts	(date 1757071880379)
+@@ -24,6 +24,7 @@
+     implementation("dev.jorel:commandapi-bukkit-shade-mojang-mapped:10.1.2")
+ 
+     compileOnly("com.ticxo.modelengine:ModelEngine:R4.0.9")
++    compileOnly("io.github.toxicity188:bettermodel:1.11.4")
+ 
+     compileOnly(files("libs/geyserutils-spigot-1.0-SNAPSHOT.jar"))
+     compileOnly("org.geysermc.floodgate:api:2.2.4-SNAPSHOT")
+Index: src/main/java/re/imc/geysermodelengine/listener/ModelListener.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package re.imc.geysermodelengine.listener;\r\n\r\nimport com.ticxo.modelengine.api.events.*;\r\nimport com.ticxo.modelengine.api.model.ActiveModel;\r\nimport org.apache.commons.lang3.tuple.Pair;\r\nimport org.bukkit.Bukkit;\r\nimport org.bukkit.World;\r\nimport org.bukkit.entity.Player;\r\nimport org.bukkit.event.EventHandler;\r\nimport org.bukkit.event.EventPriority;\r\nimport org.bukkit.event.Listener;\r\nimport org.bukkit.event.player.PlayerJoinEvent;\r\nimport org.bukkit.event.player.PlayerQuitEvent;\r\nimport org.bukkit.event.world.WorldInitEvent;\r\nimport org.geysermc.floodgate.api.FloodgateApi;\r\nimport re.imc.geysermodelengine.GeyserModelEngine;\r\nimport re.imc.geysermodelengine.managers.model.data.ModelEntityData;\r\n\r\nimport java.util.Map;\r\n\r\npublic class ModelListener implements Listener {\r\n\r\n    private final GeyserModelEngine plugin;\r\n\r\n    public ModelListener(GeyserModelEngine plugin) {\r\n        this.plugin = plugin;\r\n    }\r\n\r\n    @EventHandler(priority = EventPriority.MONITOR)\r\n    public void onAddModel(AddModelEvent event) {\r\n        if (event.isCancelled()) return;\r\n        plugin.getModelManager().create(event.getTarget(), event.getModel());\r\n    }\r\n\r\n    @EventHandler(priority = EventPriority.MONITOR)\r\n    public void onModelMount(ModelMountEvent event) {\r\n        Map<ActiveModel, ModelEntityData> map = plugin.getModelManager().getEntitiesCache().get(event.getVehicle().getModeledEntity().getBase().getEntityId());\r\n        if (!event.isDriver()) return;\r\n\r\n        ModelEntityData model = map.get(event.getVehicle());\r\n\r\n        if (model != null && event.getPassenger() instanceof Player player) {\r\n            plugin.getModelManager().getDriversCache().put(player.getUniqueId(), Pair.of(event.getVehicle(), event.getSeat()));\r\n        }\r\n    }\r\n\r\n    @EventHandler(priority = EventPriority.MONITOR)\r\n    public void onModelDismount(ModelDismountEvent event) {\r\n        if (event.getPassenger() instanceof Player player) {\r\n            plugin.getModelManager().getDriversCache().remove(player.getUniqueId());\r\n        }\r\n    }\r\n\r\n    /*\r\n     / xSquishyLiam:\r\n     / I'm wondering if we could move this to more of a player loading chunks instead of checking all worlds via PlayerChunkLoadEvent?\r\n    */\r\n    @EventHandler\r\n    public void onWorldInit(WorldInitEvent event) {\r\n        World world = event.getWorld();\r\n        world.getEntities().forEach(entity -> plugin.getModelManager().processEntities(entity));\r\n    }\r\n\r\n    /*\r\n     / xSquishyLiam - conclusion:\r\n     / I'm assuming when a player joins the server the packet for mob spawning is instant so the client resyncs itself\r\n     / hence why the pig is shown instead of going invisible and not displaying the texture of the modeled mob\r\n    */\r\n    @EventHandler\r\n    public void onPlayerJoin(PlayerJoinEvent event) {\r\n        Player player = event.getPlayer();\r\n        if (!FloodgateApi.getInstance().isFloodgatePlayer(player.getUniqueId())) return;\r\n        Bukkit.getGlobalRegionScheduler().runDelayed(plugin, scheduledTask -> plugin.getModelManager().getPlayerJoinedCache().add(player.getUniqueId()), 10);\r\n    }\r\n\r\n    @EventHandler\r\n    public void onPlayerQuit(PlayerQuitEvent event) {\r\n        Player player = event.getPlayer();\r\n        if (!FloodgateApi.getInstance().isFloodgatePlayer(player.getUniqueId())) return;\r\n        plugin.getModelManager().getPlayerJoinedCache().remove(player.getUniqueId());\r\n    }\r\n}\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/re/imc/geysermodelengine/listener/ModelListener.java b/src/main/java/re/imc/geysermodelengine/listener/ModelListener.java
+--- a/src/main/java/re/imc/geysermodelengine/listener/ModelListener.java	(revision b6425ffa51b4e18318b1d2318db705909064ac55)
++++ b/src/main/java/re/imc/geysermodelengine/listener/ModelListener.java	(date 1757122148283)
+@@ -1,22 +1,15 @@
+ package re.imc.geysermodelengine.listener;
+ 
+-import com.ticxo.modelengine.api.events.*;
+-import com.ticxo.modelengine.api.model.ActiveModel;
+-import org.apache.commons.lang3.tuple.Pair;
+ import org.bukkit.Bukkit;
+ import org.bukkit.World;
+ import org.bukkit.entity.Player;
+ import org.bukkit.event.EventHandler;
+-import org.bukkit.event.EventPriority;
+ import org.bukkit.event.Listener;
+ import org.bukkit.event.player.PlayerJoinEvent;
+ import org.bukkit.event.player.PlayerQuitEvent;
+ import org.bukkit.event.world.WorldInitEvent;
+ import org.geysermc.floodgate.api.FloodgateApi;
+ import re.imc.geysermodelengine.GeyserModelEngine;
+-import re.imc.geysermodelengine.managers.model.data.ModelEntityData;
+-
+-import java.util.Map;
+ 
+ public class ModelListener implements Listener {
+ 
+@@ -26,45 +19,19 @@
+         this.plugin = plugin;
+     }
+ 
+-    @EventHandler(priority = EventPriority.MONITOR)
+-    public void onAddModel(AddModelEvent event) {
+-        if (event.isCancelled()) return;
+-        plugin.getModelManager().create(event.getTarget(), event.getModel());
+-    }
+-
+-    @EventHandler(priority = EventPriority.MONITOR)
+-    public void onModelMount(ModelMountEvent event) {
+-        Map<ActiveModel, ModelEntityData> map = plugin.getModelManager().getEntitiesCache().get(event.getVehicle().getModeledEntity().getBase().getEntityId());
+-        if (!event.isDriver()) return;
+-
+-        ModelEntityData model = map.get(event.getVehicle());
+-
+-        if (model != null && event.getPassenger() instanceof Player player) {
+-            plugin.getModelManager().getDriversCache().put(player.getUniqueId(), Pair.of(event.getVehicle(), event.getSeat()));
+-        }
+-    }
+-
+-    @EventHandler(priority = EventPriority.MONITOR)
+-    public void onModelDismount(ModelDismountEvent event) {
+-        if (event.getPassenger() instanceof Player player) {
+-            plugin.getModelManager().getDriversCache().remove(player.getUniqueId());
+-        }
+-    }
+-
+     /*
+      / xSquishyLiam:
+-     / I'm wondering if we could move this to more of a player loading chunks instead of checking all worlds via PlayerChunkLoadEvent?
++     / May change this into a better system?
+     */
+     @EventHandler
+     public void onWorldInit(WorldInitEvent event) {
+         World world = event.getWorld();
+-        world.getEntities().forEach(entity -> plugin.getModelManager().processEntities(entity));
++        world.getEntities().forEach(entity -> plugin.getModelManager().getModelHandler().processEntities(plugin, entity));
+     }
+ 
+     /*
+-     / xSquishyLiam - conclusion:
+-     / I'm assuming when a player joins the server the packet for mob spawning is instant so the client resyncs itself
+-     / hence why the pig is shown instead of going invisible and not displaying the texture of the modeled mob
++     / xSquishyLiam:
++     / A runDelay make sures the client doesn't see pigs on login due to the client resyncing themselves back to normal
+     */
+     @EventHandler
+     public void onPlayerJoin(PlayerJoinEvent event) {
+Index: src/main/resources/paper-plugin.yml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>main: re.imc.geysermodelengine.GeyserModelEngine\r\nname: GeyserModelEngine\r\nversion: '1.0.0'\r\napi-version: '1.21'\r\n\r\nauthors:\r\n  - zimzaza4\r\n  - willem.dev\r\n\r\nload: STARTUP\r\n\r\ndependencies:\r\n  server:\r\n    GeyserUtils:\r\n      required: true\r\n    packetevents:\r\n      required: true\r\n    ModelEngine:\r\n      required: true\r\n    floodgate:\r\n      required: true
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/resources/paper-plugin.yml b/src/main/resources/paper-plugin.yml
+--- a/src/main/resources/paper-plugin.yml	(revision b6425ffa51b4e18318b1d2318db705909064ac55)
++++ b/src/main/resources/paper-plugin.yml	(date 1757196356991)
+@@ -15,7 +15,11 @@
+       required: true
+     packetevents:
+       required: true
+-    ModelEngine:
+-      required: true
+     floodgate:
+-      required: true
+\ No newline at end of file
++      required: true
++    ModelEngine:
++      required: false
++      join-classpath: true
++    BetterModel:
++      required: false
++      join-classpath: true
+\ No newline at end of file
+Index: src/main/java/re/imc/geysermodelengine/managers/model/ModelManager.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package re.imc.geysermodelengine.managers.model;\r\n\r\nimport com.ticxo.modelengine.api.ModelEngineAPI;\r\nimport com.ticxo.modelengine.api.model.ActiveModel;\r\nimport com.ticxo.modelengine.api.model.ModeledEntity;\r\nimport com.ticxo.modelengine.api.model.bone.type.Mount;\r\nimport org.apache.commons.lang3.tuple.Pair;\r\nimport org.bukkit.entity.Entity;\r\nimport re.imc.geysermodelengine.GeyserModelEngine;\r\nimport re.imc.geysermodelengine.managers.model.data.ModelEntityData;\r\n\r\nimport java.util.*;\r\nimport java.util.concurrent.ConcurrentHashMap;\r\n\r\npublic class ModelManager {\r\n\r\n    private final GeyserModelEngine plugin;\r\n\r\n    private final HashSet<UUID> playerJoinedCache = new HashSet<>();\r\n\r\n    private final ConcurrentHashMap<Integer, Map<ActiveModel, ModelEntityData>> entitiesCache = new ConcurrentHashMap<>();\r\n    private final ConcurrentHashMap<Integer, ModelEntityData> modelEntitiesCache = new ConcurrentHashMap<>();\r\n\r\n    private final ConcurrentHashMap<UUID, Pair<ActiveModel, Mount>> driversCache = new ConcurrentHashMap<>();\r\n\r\n    public ModelManager(GeyserModelEngine plugin) {\r\n        this.plugin = plugin;\r\n    }\r\n\r\n    public void create(ModeledEntity entity, ActiveModel model) {\r\n        ModelEntityData modelEntity = new ModelEntityData(plugin, entity, model);\r\n        int id = entity.getBase().getEntityId();\r\n\r\n        Map<ActiveModel, ModelEntityData> map = entitiesCache.computeIfAbsent(id, k -> new HashMap<>());\r\n\r\n        for (Map.Entry<ActiveModel, ModelEntityData> entry : map.entrySet()) {\r\n            if (entry.getKey() !=  model && entry.getKey().getBlueprint().getName().equals(model.getBlueprint().getName())) {\r\n                return;\r\n            }\r\n        }\r\n\r\n        map.put(model, modelEntity);\r\n    }\r\n\r\n    public void processEntities(Entity entity) {\r\n        if (entitiesCache.containsKey(entity.getEntityId())) return;\r\n\r\n        ModeledEntity modeledEntity = ModelEngineAPI.getModeledEntity(entity);\r\n        if (modeledEntity == null) return;\r\n\r\n        Optional<ActiveModel> model = modeledEntity.getModels().values().stream().findFirst();\r\n        model.ifPresent(m -> create(modeledEntity, m));\r\n    }\r\n\r\n    public void removeEntities() {\r\n        for (Map<ActiveModel, ModelEntityData> entities : entitiesCache.values()) {\r\n            entities.forEach((model, modelEntity) -> modelEntity.getEntity().remove());\r\n        }\r\n    }\r\n\r\n    public HashSet<UUID> getPlayerJoinedCache() {\r\n        return playerJoinedCache;\r\n    }\r\n\r\n    public ConcurrentHashMap<Integer, Map<ActiveModel, ModelEntityData>> getEntitiesCache() {\r\n        return entitiesCache;\r\n    }\r\n\r\n    public ConcurrentHashMap<Integer, ModelEntityData> getModelEntitiesCache() {\r\n        return modelEntitiesCache;\r\n    }\r\n\r\n    public ConcurrentHashMap<UUID, Pair<ActiveModel, Mount>> getDriversCache() {\r\n        return driversCache;\r\n    }\r\n}\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/re/imc/geysermodelengine/managers/model/ModelManager.java b/src/main/java/re/imc/geysermodelengine/managers/model/ModelManager.java
+--- a/src/main/java/re/imc/geysermodelengine/managers/model/ModelManager.java	(revision b6425ffa51b4e18318b1d2318db705909064ac55)
++++ b/src/main/java/re/imc/geysermodelengine/managers/model/ModelManager.java	(date 1757180623200)
+@@ -1,13 +1,15 @@
+ package re.imc.geysermodelengine.managers.model;
+ 
+-import com.ticxo.modelengine.api.ModelEngineAPI;
+ import com.ticxo.modelengine.api.model.ActiveModel;
+-import com.ticxo.modelengine.api.model.ModeledEntity;
+ import com.ticxo.modelengine.api.model.bone.type.Mount;
+ import org.apache.commons.lang3.tuple.Pair;
+-import org.bukkit.entity.Entity;
++import org.bukkit.Bukkit;
+ import re.imc.geysermodelengine.GeyserModelEngine;
+-import re.imc.geysermodelengine.managers.model.data.ModelEntityData;
++import re.imc.geysermodelengine.managers.model.entity.EntityData;
++import re.imc.geysermodelengine.managers.model.model.Model;
++import re.imc.geysermodelengine.managers.model.modelhandler.BetterModelHandler;
++import re.imc.geysermodelengine.managers.model.modelhandler.ModelEngineHandler;
++import re.imc.geysermodelengine.managers.model.modelhandler.ModelHandler;
+ 
+ import java.util.*;
+ import java.util.concurrent.ConcurrentHashMap;
+@@ -16,57 +18,47 @@
+ 
+     private final GeyserModelEngine plugin;
+ 
++    private ModelHandler modelHandler;
++
+     private final HashSet<UUID> playerJoinedCache = new HashSet<>();
+ 
+-    private final ConcurrentHashMap<Integer, Map<ActiveModel, ModelEntityData>> entitiesCache = new ConcurrentHashMap<>();
+-    private final ConcurrentHashMap<Integer, ModelEntityData> modelEntitiesCache = new ConcurrentHashMap<>();
++    private final ConcurrentHashMap<Integer, Model> modelEntitiesCache = new ConcurrentHashMap<>();
++    private final ConcurrentHashMap<Integer, Map<Model, EntityData>> entitiesCache = new ConcurrentHashMap<>();
+ 
++    // MEG ONLY
+     private final ConcurrentHashMap<UUID, Pair<ActiveModel, Mount>> driversCache = new ConcurrentHashMap<>();
+ 
+     public ModelManager(GeyserModelEngine plugin) {
+         this.plugin = plugin;
+-    }
+-
+-    public void create(ModeledEntity entity, ActiveModel model) {
+-        ModelEntityData modelEntity = new ModelEntityData(plugin, entity, model);
+-        int id = entity.getBase().getEntityId();
+ 
+-        Map<ActiveModel, ModelEntityData> map = entitiesCache.computeIfAbsent(id, k -> new HashMap<>());
+-
+-        for (Map.Entry<ActiveModel, ModelEntityData> entry : map.entrySet()) {
+-            if (entry.getKey() !=  model && entry.getKey().getBlueprint().getName().equals(model.getBlueprint().getName())) {
+-                return;
+-            }
++        if (Bukkit.getPluginManager().getPlugin("ModelEngine") != null) {
++            this.modelHandler = new ModelEngineHandler();
++            plugin.getLogger().info("Using ModelEngine handler!");
++        } else if (Bukkit.getPluginManager().getPlugin("BetterModel") != null) {
++            this.modelHandler = new BetterModelHandler();
++            plugin.getLogger().info("Using BetterModel handler!");
++        } else {
++            plugin.getLogger().severe("No supported model engine found!");
++            plugin.getServer().getPluginManager().disablePlugin(plugin);
++            return;
+         }
+-
+-        map.put(model, modelEntity);
+-    }
+-
+-    public void processEntities(Entity entity) {
+-        if (entitiesCache.containsKey(entity.getEntityId())) return;
+ 
+-        ModeledEntity modeledEntity = ModelEngineAPI.getModeledEntity(entity);
+-        if (modeledEntity == null) return;
+-
+-        Optional<ActiveModel> model = modeledEntity.getModels().values().stream().findFirst();
+-        model.ifPresent(m -> create(modeledEntity, m));
++        modelHandler.loadListeners(plugin);
+     }
+ 
+-    public void removeEntities() {
+-        for (Map<ActiveModel, ModelEntityData> entities : entitiesCache.values()) {
+-            entities.forEach((model, modelEntity) -> modelEntity.getEntity().remove());
+-        }
++    public ModelHandler getModelHandler() {
++        return modelHandler;
+     }
+ 
+     public HashSet<UUID> getPlayerJoinedCache() {
+         return playerJoinedCache;
+     }
+ 
+-    public ConcurrentHashMap<Integer, Map<ActiveModel, ModelEntityData>> getEntitiesCache() {
++    public ConcurrentHashMap<Integer, Map<Model, EntityData>> getEntitiesCache() {
+         return entitiesCache;
+     }
+ 
+-    public ConcurrentHashMap<Integer, ModelEntityData> getModelEntitiesCache() {
++    public ConcurrentHashMap<Integer, Model> getModelEntitiesCache() {
+         return modelEntitiesCache;
+     }
+ 
+Index: src/main/java/re/imc/geysermodelengine/runnables/UpdateTaskRunnable.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package re.imc.geysermodelengine.runnables;\r\n\r\nimport com.ticxo.modelengine.api.model.ActiveModel;\r\nimport io.papermc.paper.threadedregions.scheduler.ScheduledTask;\r\nimport re.imc.geysermodelengine.GeyserModelEngine;\r\nimport re.imc.geysermodelengine.managers.model.data.ModelEntityData;\r\n\r\nimport java.util.Map;\r\nimport java.util.function.Consumer;\r\n\r\npublic class UpdateTaskRunnable implements Consumer<ScheduledTask> {\r\n\r\n    private final GeyserModelEngine plugin;\r\n\r\n    public UpdateTaskRunnable(GeyserModelEngine plugin) {\r\n        this.plugin = plugin;\r\n    }\r\n\r\n    @Override\r\n    public void accept(ScheduledTask scheduledTask) {\r\n        try {\r\n            for (Map<ActiveModel, ModelEntityData> models : plugin.getModelManager().getEntitiesCache().values()) {\r\n                models.values().forEach(model -> model.getEntityTask().updateEntityProperties(model, model.getViewers(), false));\r\n            }\r\n        } catch (Throwable err) {\r\n            throw new RuntimeException(err);\r\n        }\r\n    }\r\n}\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/re/imc/geysermodelengine/runnables/UpdateTaskRunnable.java b/src/main/java/re/imc/geysermodelengine/runnables/UpdateTaskRunnable.java
+--- a/src/main/java/re/imc/geysermodelengine/runnables/UpdateTaskRunnable.java	(revision b6425ffa51b4e18318b1d2318db705909064ac55)
++++ b/src/main/java/re/imc/geysermodelengine/runnables/UpdateTaskRunnable.java	(date 1757196082553)
+@@ -1,9 +1,10 @@
+ package re.imc.geysermodelengine.runnables;
+ 
+-import com.ticxo.modelengine.api.model.ActiveModel;
+ import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
+ import re.imc.geysermodelengine.GeyserModelEngine;
+-import re.imc.geysermodelengine.managers.model.data.ModelEntityData;
++import re.imc.geysermodelengine.managers.model.entity.EntityData;
++import re.imc.geysermodelengine.managers.model.entity.ModelEngineEntityData;
++import re.imc.geysermodelengine.managers.model.model.Model;
+ 
+ import java.util.Map;
+ import java.util.function.Consumer;
+@@ -19,8 +20,8 @@
+     @Override
+     public void accept(ScheduledTask scheduledTask) {
+         try {
+-            for (Map<ActiveModel, ModelEntityData> models : plugin.getModelManager().getEntitiesCache().values()) {
+-                models.values().forEach(model -> model.getEntityTask().updateEntityProperties(model, model.getViewers(), false));
++            for (Map<Model, EntityData> models : plugin.getModelManager().getEntitiesCache().values()) {
++                models.values().forEach(model -> model.getEntityTask().updateEntityProperties((ModelEngineEntityData) model, model.getViewers(), false));
+             }
+         } catch (Throwable err) {
+             throw new RuntimeException(err);
+Index: src/main/java/re/imc/geysermodelengine/managers/model/data/ModelEntityData.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/re/imc/geysermodelengine/managers/model/data/ModelEntityData.java b/src/main/java/re/imc/geysermodelengine/managers/model/entity/ModelEngineEntityData.java
+rename from src/main/java/re/imc/geysermodelengine/managers/model/data/ModelEntityData.java
+rename to src/main/java/re/imc/geysermodelengine/managers/model/entity/ModelEngineEntityData.java
+--- a/src/main/java/re/imc/geysermodelengine/managers/model/data/ModelEntityData.java	(revision b6425ffa51b4e18318b1d2318db705909064ac55)
++++ b/src/main/java/re/imc/geysermodelengine/managers/model/entity/ModelEngineEntityData.java	(date 1757181577504)
+@@ -1,4 +1,4 @@
+-package re.imc.geysermodelengine.managers.model.data;
++package re.imc.geysermodelengine.managers.model.entity;
+ 
+ import com.github.retrooper.packetevents.protocol.entity.type.EntityTypes;
+ import com.google.common.collect.Sets;
+@@ -7,16 +7,17 @@
+ import org.bukkit.Location;
+ import org.bukkit.entity.Player;
+ import re.imc.geysermodelengine.GeyserModelEngine;
++import re.imc.geysermodelengine.managers.model.model.Model;
+ import re.imc.geysermodelengine.packet.entity.PacketEntity;
+ import re.imc.geysermodelengine.runnables.EntityTaskRunnable;
+ 
+ import java.util.Set;
+ 
+-public class ModelEntityData {
++public class ModelEngineEntityData implements EntityData {
+ 
+     private final GeyserModelEngine plugin;
+ 
+-    private PacketEntity entity;
++    private final PacketEntity entity;
+ 
+     private final Set<Player> viewers = Sets.newConcurrentHashSet();
+ 
+@@ -26,38 +27,46 @@
+ 
+     private EntityTaskRunnable entityTask;
+ 
+-    public ModelEntityData(GeyserModelEngine plugin, ModeledEntity modeledEntity, ActiveModel model) {
++    public ModelEngineEntityData(GeyserModelEngine plugin, ModeledEntity modeledEntity, ActiveModel activeModel) {
+         this.plugin = plugin;
+ 
+         this.modeledEntity = modeledEntity;
+-        this.activeModel = model;
+-        this.entity = spawnEntity();
++        this.activeModel = activeModel;
++        this.entity = new PacketEntity(EntityTypes.PIG, viewers, modeledEntity.getBase().getLocation());
+ 
+         runEntityTask();
+     }
+ 
++    @Override
+     public void teleportToModel() {
+         Location location = modeledEntity.getBase().getLocation();
+         entity.teleport(location);
+     }
+ 
+-    public PacketEntity spawnEntity() {
+-        entity = new PacketEntity(EntityTypes.PIG, viewers, modeledEntity.getBase().getLocation());
+-        return entity;
+-    }
+-
+     public void runEntityTask() {
+         entityTask = new EntityTaskRunnable(plugin, this);
+     }
+ 
++    @Override
+     public PacketEntity getEntity() {
+         return entity;
+     }
+ 
++    @Override
+     public Set<Player> getViewers() {
+         return viewers;
+     }
+ 
++    @Override
++    public void remove() {
++
++    }
++
++    @Override
++    public EntityTaskRunnable getEntityTask() {
++        return entityTask;
++    }
++
+     public ModeledEntity getModeledEntity() {
+         return modeledEntity;
+     }
+@@ -65,8 +74,4 @@
+     public ActiveModel getActiveModel() {
+         return activeModel;
+     }
+-
+-    public EntityTaskRunnable getEntityTask() {
+-        return entityTask;
+-    }
+ }
+Index: src/main/java/re/imc/geysermodelengine/listener/ModelEngineListener.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/re/imc/geysermodelengine/listener/ModelEngineListener.java b/src/main/java/re/imc/geysermodelengine/listener/ModelEngineListener.java
+new file mode 100644
+--- /dev/null	(date 1757189911404)
++++ b/src/main/java/re/imc/geysermodelengine/listener/ModelEngineListener.java	(date 1757189911404)
+@@ -0,0 +1,60 @@
++package re.imc.geysermodelengine.listener;
++
++import com.ticxo.modelengine.api.events.*;
++import com.ticxo.modelengine.api.model.ActiveModel;
++import kr.toxicity.model.api.data.raw.ModelData;
++import org.apache.commons.lang3.tuple.Pair;
++import org.bukkit.entity.Player;
++import org.bukkit.event.EventHandler;
++import org.bukkit.event.EventPriority;
++import org.bukkit.event.Listener;
++import re.imc.geysermodelengine.GeyserModelEngine;
++import re.imc.geysermodelengine.managers.model.entity.EntityData;
++import re.imc.geysermodelengine.managers.model.entity.ModelEngineEntityData;
++import re.imc.geysermodelengine.managers.model.model.Model;
++
++import java.util.Map;
++
++public class ModelEngineListener implements Listener {
++
++    private final GeyserModelEngine plugin;
++
++    public ModelEngineListener(GeyserModelEngine plugin) {
++        this.plugin = plugin;
++    }
++
++    @EventHandler(priority = EventPriority.MONITOR)
++    public void onAddModel(AddModelEvent event) {
++        if (event.isCancelled()) return;
++        plugin.getModelManager().getModelHandler().createModel(plugin, event.getTarget(), event.getModel());
++    }
++
++    // Needs Testing
++    @EventHandler(priority = EventPriority.MONITOR)
++    public void onModelMount(ModelMountEvent event) {
++        if (!event.isDriver()) return;
++
++        ActiveModel activeModel = event.getVehicle();
++        if (activeModel == null) return;
++
++        int entityID = activeModel.getModeledEntity().getBase().getEntityId();
++
++        Map<Model, EntityData> entityDataCache = plugin.getModelManager().getEntitiesCache().get(entityID);
++        if (entityDataCache == null) return;
++
++        Model model = plugin.getModelManager().getModelEntitiesCache().get(entityID);
++
++        EntityData entityData = entityDataCache.get(model);
++
++        if (entityData != null && event.getPassenger() instanceof Player player) {
++            plugin.getModelManager().getDriversCache().put(player.getUniqueId(), Pair.of(event.getVehicle(), event.getSeat()));
++        }
++    }
++
++    @EventHandler(priority = EventPriority.MONITOR)
++    public void onModelDismount(ModelDismountEvent event) {
++        if (event.getPassenger() instanceof Player player) {
++            plugin.getModelManager().getDriversCache().remove(player.getUniqueId());
++        }
++    }
++}
+Index: src/main/java/re/imc/geysermodelengine/managers/model/model/BetterModelModel.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/re/imc/geysermodelengine/managers/model/model/BetterModelModel.java b/src/main/java/re/imc/geysermodelengine/managers/model/model/BetterModelModel.java
+new file mode 100644
+--- /dev/null	(date 1757182859144)
++++ b/src/main/java/re/imc/geysermodelengine/managers/model/model/BetterModelModel.java	(date 1757182859144)
+@@ -0,0 +1,28 @@
++package re.imc.geysermodelengine.managers.model.model;
++
++import re.imc.geysermodelengine.managers.model.entity.EntityData;
++import re.imc.geysermodelengine.managers.model.modelhandler.ModelHandler;
++import re.imc.geysermodelengine.managers.model.propertyhandler.PropertyHandler;
++
++public class BetterModelModel implements Model {
++
++    @Override
++    public String getName() {
++        return "";
++    }
++
++    @Override
++    public ModelHandler getModelHandler() {
++        return null;
++    }
++
++    @Override
++    public EntityData getEntityData() {
++        return null;
++    }
++
++    @Override
++    public PropertyHandler getPropertyHandler() {
++        return null;
++    }
++}
+Index: src/main/java/re/imc/geysermodelengine/managers/model/entity/BetterModelEntityData.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/re/imc/geysermodelengine/managers/model/entity/BetterModelEntityData.java b/src/main/java/re/imc/geysermodelengine/managers/model/entity/BetterModelEntityData.java
+new file mode 100644
+--- /dev/null	(date 1757165576991)
++++ b/src/main/java/re/imc/geysermodelengine/managers/model/entity/BetterModelEntityData.java	(date 1757165576991)
+@@ -0,0 +1,4 @@
++package re.imc.geysermodelengine.managers.model.entity;
++
++public class BetterModelEntityData {
++}
+Index: src/main/java/re/imc/geysermodelengine/managers/model/model/Model.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/re/imc/geysermodelengine/managers/model/model/Model.java b/src/main/java/re/imc/geysermodelengine/managers/model/model/Model.java
+new file mode 100644
+--- /dev/null	(date 1757182859294)
++++ b/src/main/java/re/imc/geysermodelengine/managers/model/model/Model.java	(date 1757182859294)
+@@ -0,0 +1,14 @@
++package re.imc.geysermodelengine.managers.model.model;
++
++import re.imc.geysermodelengine.managers.model.entity.EntityData;
++import re.imc.geysermodelengine.managers.model.modelhandler.ModelHandler;
++import re.imc.geysermodelengine.managers.model.propertyhandler.PropertyHandler;
++
++public interface Model {
++
++    String getName();
++
++    ModelHandler getModelHandler();
++    EntityData getEntityData();
++    PropertyHandler getPropertyHandler();
++}
+Index: src/main/java/re/imc/geysermodelengine/managers/commands/CommandManager.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package re.imc.geysermodelengine.managers.commands;\r\n\r\nimport org.reflections.Reflections;\r\nimport re.imc.geysermodelengine.GeyserModelEngine;\r\n\r\nimport java.lang.reflect.InvocationTargetException;\r\nimport java.util.HashMap;\r\n\r\npublic class CommandManager {\r\n\r\n    private final GeyserModelEngine plugin;\r\n\r\n    private final HashMap<String, CommandManagers> commandManagersCache = new HashMap<>();\r\n\r\n    public CommandManager(GeyserModelEngine plugin) {\r\n        this.plugin = plugin;\r\n        load(\"re.imc.geysermodelengine.managers.commands.managers\");\r\n    }\r\n\r\n    private void load(String path) {\r\n        for (Class<?> clazz : new Reflections(path).getSubTypesOf(CommandManagers.class)) {\r\n            try {\r\n                CommandManagers commandManager = (CommandManagers) clazz.getDeclaredConstructor(GeyserModelEngine.class).newInstance(plugin);\r\n                plugin.getLogger().warning(\"Loading Command Manager - \" + commandManager.name());\r\n                commandManagersCache.put(commandManager.name(), commandManager);\r\n            } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException err) {\r\n                plugin.getLogger().severe(\"Failed to load Command Manager \" + clazz.getName());\r\n                throw new RuntimeException(err);\r\n            }\r\n        }\r\n    }\r\n\r\n    public HashMap<String, CommandManagers> getCommandManagersCache() {\r\n        return commandManagersCache;\r\n    }\r\n}\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/re/imc/geysermodelengine/managers/commands/CommandManager.java b/src/main/java/re/imc/geysermodelengine/managers/commands/CommandManager.java
+--- a/src/main/java/re/imc/geysermodelengine/managers/commands/CommandManager.java	(revision b6425ffa51b4e18318b1d2318db705909064ac55)
++++ b/src/main/java/re/imc/geysermodelengine/managers/commands/CommandManager.java	(date 1757123367316)
+@@ -21,7 +21,7 @@
+         for (Class<?> clazz : new Reflections(path).getSubTypesOf(CommandManagers.class)) {
+             try {
+                 CommandManagers commandManager = (CommandManagers) clazz.getDeclaredConstructor(GeyserModelEngine.class).newInstance(plugin);
+-                plugin.getLogger().warning("Loading Command Manager - " + commandManager.name());
++                plugin.getLogger().info("Loading Command Manager - " + commandManager.name());
+                 commandManagersCache.put(commandManager.name(), commandManager);
+             } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException err) {
+                 plugin.getLogger().severe("Failed to load Command Manager " + clazz.getName());
+Index: src/main/java/re/imc/geysermodelengine/managers/model/model/ModelEngineModel.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/re/imc/geysermodelengine/managers/model/model/ModelEngineModel.java b/src/main/java/re/imc/geysermodelengine/managers/model/model/ModelEngineModel.java
+new file mode 100644
+--- /dev/null	(date 1757181527994)
++++ b/src/main/java/re/imc/geysermodelengine/managers/model/model/ModelEngineModel.java	(date 1757181527994)
+@@ -0,0 +1,45 @@
++package re.imc.geysermodelengine.managers.model.model;
++
++import com.ticxo.modelengine.api.model.ActiveModel;
++import re.imc.geysermodelengine.managers.model.entity.EntityData;
++import re.imc.geysermodelengine.managers.model.modelhandler.ModelHandler;
++import re.imc.geysermodelengine.managers.model.propertyhandler.PropertyHandler;
++
++public class ModelEngineModel implements Model {
++
++    private final ActiveModel activeModel;
++    private final ModelHandler modelHandler;
++    private final EntityData entityData;
++    private final PropertyHandler propertyHandler;
++
++    public ModelEngineModel(ActiveModel activeModel, ModelHandler modelHandler, EntityData entityData, PropertyHandler propertyHandler) {
++        this.activeModel = activeModel;
++        this.modelHandler = modelHandler;
++        this.entityData = entityData;
++        this.propertyHandler = propertyHandler;
++    }
++
++    @Override
++    public String getName() {
++        return activeModel.getBlueprint().getName();
++    }
++
++    @Override
++    public ModelHandler getModelHandler() {
++        return modelHandler;
++    }
++
++    @Override
++    public EntityData getEntityData() {
++        return entityData;
++    }
++
++    @Override
++    public PropertyHandler getPropertyHandler() {
++        return propertyHandler;
++    }
++
++    public ActiveModel getActiveModel() {
++        return activeModel;
++    }
++}
+Index: src/main/java/re/imc/geysermodelengine/managers/model/entity/EntityData.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/re/imc/geysermodelengine/managers/model/entity/EntityData.java b/src/main/java/re/imc/geysermodelengine/managers/model/entity/EntityData.java
+new file mode 100644
+--- /dev/null	(date 1757181577485)
++++ b/src/main/java/re/imc/geysermodelengine/managers/model/entity/EntityData.java	(date 1757181577485)
+@@ -0,0 +1,20 @@
++package re.imc.geysermodelengine.managers.model.entity;
++
++import org.bukkit.entity.Player;
++import re.imc.geysermodelengine.managers.model.model.Model;
++import re.imc.geysermodelengine.packet.entity.PacketEntity;
++import re.imc.geysermodelengine.runnables.EntityTaskRunnable;
++
++import java.util.Set;
++
++public interface EntityData {
++
++    PacketEntity getEntity();
++    Set<Player> getViewers();
++
++    void teleportToModel();
++
++    void remove();
++
++    EntityTaskRunnable getEntityTask();
++}
+Index: src/main/java/re/imc/geysermodelengine/managers/model/propertyhandler/PropertyHandler.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/re/imc/geysermodelengine/managers/model/propertyhandler/PropertyHandler.java b/src/main/java/re/imc/geysermodelengine/managers/model/propertyhandler/PropertyHandler.java
+new file mode 100644
+--- /dev/null	(date 1757165735079)
++++ b/src/main/java/re/imc/geysermodelengine/managers/model/propertyhandler/PropertyHandler.java	(date 1757165735079)
+@@ -0,0 +1,16 @@
++package re.imc.geysermodelengine.managers.model.propertyhandler;
++
++import org.bukkit.entity.Player;
++import re.imc.geysermodelengine.managers.model.entity.EntityData;
++
++import java.awt.*;
++import java.util.Collection;
++
++public interface PropertyHandler {
++
++    void sendScale(EntityData modelData, Collection<Player> players, float lastScale, boolean firstSend);
++    void sendColor(EntityData modelData, Collection<Player> players, Color lastColor, boolean firstSend);
++    void sendHitBox(EntityData modelData, Player player);
++
++
++}
+Index: src/main/java/re/imc/geysermodelengine/managers/model/propertyhandler/BetterModelPropertyHandler.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/re/imc/geysermodelengine/managers/model/propertyhandler/BetterModelPropertyHandler.java b/src/main/java/re/imc/geysermodelengine/managers/model/propertyhandler/BetterModelPropertyHandler.java
+new file mode 100644
+--- /dev/null	(date 1757165735065)
++++ b/src/main/java/re/imc/geysermodelengine/managers/model/propertyhandler/BetterModelPropertyHandler.java	(date 1757165735065)
+@@ -0,0 +1,25 @@
++package re.imc.geysermodelengine.managers.model.propertyhandler;
++
++import org.bukkit.entity.Player;
++import re.imc.geysermodelengine.managers.model.entity.EntityData;
++
++import java.awt.*;
++import java.util.Collection;
++
++public class BetterModelPropertyHandler implements PropertyHandler {
++
++    @Override
++    public void sendScale(EntityData modelData, Collection<Player> players, float lastScale, boolean firstSend) {
++
++    }
++
++    @Override
++    public void sendColor(EntityData modelData, Collection<Player> players, Color lastColor, boolean firstSend) {
++
++    }
++
++    @Override
++    public void sendHitBox(EntityData modelData, Player player) {
++
++    }
++}
+Index: src/main/java/re/imc/geysermodelengine/managers/model/modelhandler/ModelHandler.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/re/imc/geysermodelengine/managers/model/modelhandler/ModelHandler.java b/src/main/java/re/imc/geysermodelengine/managers/model/modelhandler/ModelHandler.java
+new file mode 100644
+--- /dev/null	(date 1757185216413)
++++ b/src/main/java/re/imc/geysermodelengine/managers/model/modelhandler/ModelHandler.java	(date 1757185216413)
+@@ -0,0 +1,16 @@
++package re.imc.geysermodelengine.managers.model.modelhandler;
++
++import org.bukkit.entity.Entity;
++import re.imc.geysermodelengine.GeyserModelEngine;
++
++public interface ModelHandler {
++
++    // Might do a hashmap way tbf
++    void createModel(GeyserModelEngine plugin, Object modeledEntity, Object activeModel);
++
++    void processEntities(GeyserModelEngine plugin, Entity entity);
++
++    void removeEntities(GeyserModelEngine plugin);
++
++    void loadListeners(GeyserModelEngine plugin);
++}
+Index: src/main/java/re/imc/geysermodelengine/listener/BetterModelListener.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/re/imc/geysermodelengine/listener/BetterModelListener.java b/src/main/java/re/imc/geysermodelengine/listener/BetterModelListener.java
+new file mode 100644
+--- /dev/null	(date 1757164238078)
++++ b/src/main/java/re/imc/geysermodelengine/listener/BetterModelListener.java	(date 1757164238078)
+@@ -0,0 +1,20 @@
++package re.imc.geysermodelengine.listener;
++
++import kr.toxicity.model.api.event.CreateTrackerEvent;
++import org.bukkit.event.EventHandler;
++import org.bukkit.event.Listener;
++import re.imc.geysermodelengine.GeyserModelEngine;
++
++public class BetterModelListener implements Listener {
++
++    private final GeyserModelEngine plugin;
++
++    public BetterModelListener(GeyserModelEngine plugin) {
++        this.plugin = plugin;
++    }
++
++    @EventHandler
++    public void onModelSpawn(CreateTrackerEvent event) {
++        plugin.getLogger().info(event.getTracker().name());
++    }
++}
+Index: src/main/java/re/imc/geysermodelengine/managers/model/propertyhandler/ModelEnginePropertyHandler.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/re/imc/geysermodelengine/managers/model/propertyhandler/ModelEnginePropertyHandler.java b/src/main/java/re/imc/geysermodelengine/managers/model/propertyhandler/ModelEnginePropertyHandler.java
+new file mode 100644
+--- /dev/null	(date 1757165735124)
++++ b/src/main/java/re/imc/geysermodelengine/managers/model/propertyhandler/ModelEnginePropertyHandler.java	(date 1757165735124)
+@@ -0,0 +1,71 @@
++package re.imc.geysermodelengine.managers.model.propertyhandler;
++
++import com.ticxo.modelengine.api.model.ActiveModel;
++import me.zimzaza4.geyserutils.spigot.api.EntityUtils;
++import org.bukkit.entity.Player;
++import org.joml.Vector3fc;
++import re.imc.geysermodelengine.managers.model.entity.EntityData;
++import re.imc.geysermodelengine.managers.model.entity.ModelEngineEntityData;
++
++import java.awt.*;
++import java.lang.reflect.Method;
++import java.util.Collection;
++
++public class ModelEnginePropertyHandler implements PropertyHandler {
++
++    private final Method scaleMethod;
++
++    public ModelEnginePropertyHandler() {
++        try {
++            this.scaleMethod = ActiveModel.class.getMethod("getScale");
++        } catch (NoSuchMethodException err) {
++            throw new RuntimeException(err);
++        }
++    }
++
++    @Override
++    public void sendScale(EntityData modelData, Collection<Player> players, float lastScale, boolean firstSend) {
++        try {
++            if (players.isEmpty()) return;
++
++            ModelEngineEntityData modelEngineEntityData = (ModelEngineEntityData) modelData;
++
++            Vector3fc scale = (Vector3fc) scaleMethod.invoke(modelEngineEntityData.getActiveModel());
++
++            float average = (scale.x() + scale.y() + scale.z()) / 3;
++
++            if (!firstSend) {
++                if (average == lastScale) return;
++            }
++
++            for (Player player : players) {
++                EntityUtils.sendCustomScale(player, modelEngineEntityData.getEntity().getEntityId(), average);
++            }
++        } catch (Throwable ignored) {}
++    }
++
++    @Override
++    public void sendColor(EntityData modelData, Collection<Player> players, Color lastColor, boolean firstSend) {
++        if (players.isEmpty()) return;
++
++        ModelEngineEntityData modelEngineEntityData = (ModelEngineEntityData) modelData;
++
++        Color color = new Color(modelEngineEntityData.getActiveModel().getDefaultTint().asARGB());
++        if (modelEngineEntityData.getActiveModel().isMarkedHurt()) color = new Color(modelEngineEntityData.getActiveModel().getDamageTint().asARGB());
++
++        if (firstSend) {
++            if (color.equals(lastColor)) return;
++        }
++
++        for (Player player : players) {
++            EntityUtils.sendCustomColor(player, modelEngineEntityData.getEntity().getEntityId(), color);
++        }
++    }
++
++    @Override
++    public void sendHitBox(EntityData modelData, Player player) {
++        for (Player viewer : modelData.getViewers()) {
++            EntityUtils.sendCustomHitBox(viewer, modelData.getEntity().getEntityId(), 0.01f, 0.01f);
++        }
++    }
++}
+Index: .idea/workspace.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<project version=\"4\">\r\n  <component name=\"AutoImportSettings\">\r\n    <option name=\"autoReloadType\" value=\"SELECTIVE\" />\r\n  </component>\r\n  <component name=\"ChangeListManager\">\r\n    <list default=\"true\" id=\"ff2e9770-ec88-4715-adeb-b9dbda130e1a\" name=\"Changes\" comment=\"\">\r\n      <change beforePath=\"$PROJECT_DIR$/.idea/workspace.xml\" beforeDir=\"false\" afterPath=\"$PROJECT_DIR$/.idea/workspace.xml\" afterDir=\"false\" />\r\n    </list>\r\n    <option name=\"SHOW_DIALOG\" value=\"false\" />\r\n    <option name=\"HIGHLIGHT_CONFLICTS\" value=\"true\" />\r\n    <option name=\"HIGHLIGHT_NON_ACTIVE_CHANGELIST\" value=\"false\" />\r\n    <option name=\"LAST_RESOLUTION\" value=\"IGNORE\" />\r\n  </component>\r\n  <component name=\"ExternalProjectsData\">\r\n    <projectState path=\"$PROJECT_DIR$\">\r\n      <ProjectState />\r\n    </projectState>\r\n  </component>\r\n  <component name=\"ExternalProjectsManager\">\r\n    <system id=\"GRADLE\">\r\n      <state>\r\n        <task path=\"$PROJECT_DIR$\">\r\n          <activation />\r\n        </task>\r\n        <projects_view>\r\n          <tree_state>\r\n            <expand>\r\n              <path>\r\n                <item name=\"\" type=\"6a2764b6:ExternalProjectsStructure$RootNode\" />\r\n                <item name=\"GeyserModelEngine\" type=\"f1a62948:ProjectNode\" />\r\n              </path>\r\n              <path>\r\n                <item name=\"\" type=\"6a2764b6:ExternalProjectsStructure$RootNode\" />\r\n                <item name=\"GeyserModelEngine\" type=\"f1a62948:ProjectNode\" />\r\n                <item name=\"Tasks\" type=\"e4a08cd1:TasksNode\" />\r\n              </path>\r\n              <path>\r\n                <item name=\"\" type=\"6a2764b6:ExternalProjectsStructure$RootNode\" />\r\n                <item name=\"GeyserModelEngine\" type=\"f1a62948:ProjectNode\" />\r\n                <item name=\"Tasks\" type=\"e4a08cd1:TasksNode\" />\r\n                <item name=\"build\" type=\"c8890929:TasksNode$1\" />\r\n              </path>\r\n            </expand>\r\n            <select />\r\n          </tree_state>\r\n        </projects_view>\r\n      </state>\r\n    </system>\r\n  </component>\r\n  <component name=\"FileTemplateManagerImpl\">\r\n    <option name=\"RECENT_TEMPLATES\">\r\n      <list>\r\n        <option value=\"Interface\" />\r\n        <option value=\"Class\" />\r\n      </list>\r\n    </option>\r\n  </component>\r\n  <component name=\"Git.Settings\">\r\n    <option name=\"RECENT_GIT_ROOT_PATH\" value=\"$PROJECT_DIR$\" />\r\n  </component>\r\n  <component name=\"GradleScriptDefinitionsStorage\" workingDir=\"$PROJECT_DIR$\" gradleHome=\"$USER_HOME$/.gradle/wrapper/dists/gradle-8.12-bin/cetblhg4pflnnks72fxwobvgv/gradle-8.12\" javaHome=\"$USER_HOME$/.jdks/openjdk-21.0.1\" gradleVersion=\"8.12\" />\r\n  <component name=\"MavenRunner\">\r\n    <option name=\"delegateBuildToMaven\" value=\"true\" />\r\n  </component>\r\n  <component name=\"ProblemsViewState\">\r\n    <option name=\"selectedTabId\" value=\"DEPENDENCY_CHECKER_PROBLEMS_TAB\" />\r\n  </component>\r\n  <component name=\"ProjectColorInfo\">{\r\n  &quot;associatedIndex&quot;: 8\r\n}</component>\r\n  <component name=\"ProjectId\" id=\"2xedme8VKz03tyMoE1OuGEibnGo\" />\r\n  <component name=\"ProjectLevelVcsManager\">\r\n    <ConfirmationsSetting value=\"2\" id=\"Add\" />\r\n  </component>\r\n  <component name=\"ProjectViewState\">\r\n    <option name=\"hideEmptyMiddlePackages\" value=\"true\" />\r\n    <option name=\"showLibraryContents\" value=\"true\" />\r\n  </component>\r\n  <component name=\"PropertiesComponent\">{\r\n  &quot;keyToString&quot;: {\r\n    &quot;Gradle.Download Sources.executor&quot;: &quot;Run&quot;,\r\n    &quot;Gradle.GeyserModelEngine [build].executor&quot;: &quot;Run&quot;,\r\n    &quot;Gradle.GeyserModelEngine [jar].executor&quot;: &quot;Run&quot;,\r\n    &quot;Maven.GeyserModelEngine [install...].executor&quot;: &quot;Run&quot;,\r\n    &quot;Maven.GeyserModelEngine [install].executor&quot;: &quot;Run&quot;,\r\n    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,\r\n    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,\r\n    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,\r\n    &quot;git-widget-placeholder&quot;: &quot;main&quot;,\r\n    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,\r\n    &quot;last_opened_file_path&quot;: &quot;D:/Coding/Forks/Minecraft/GeyserModelEngine&quot;,\r\n    &quot;project.structure.last.edited&quot;: &quot;Project&quot;,\r\n    &quot;project.structure.proportion&quot;: &quot;0.0&quot;,\r\n    &quot;project.structure.side.proportion&quot;: &quot;0.2&quot;,\r\n    &quot;settings.editor.selected.configurable&quot;: &quot;reference.settings.project.maven.runner&quot;\r\n  }\r\n}</component>\r\n  <component name=\"RecentsManager\">\r\n    <key name=\"CopyFile.RECENT_KEYS\">\r\n      <recent name=\"D:\\Coding\\Forks\\Minecraft\\GeyserModelEngine\" />\r\n    </key>\r\n    <key name=\"MoveFile.RECENT_KEYS\">\r\n      <recent name=\"D:\\Coding\\Forks\\Minecraft\\GeyserModelEngine\\.github\\workflows\" />\r\n      <recent name=\"D:\\Coding\\Forks\\Minecraft\\GeyserModelEngine\\libs\" />\r\n    </key>\r\n  </component>\r\n  <component name=\"RunManager\" selected=\"Gradle.GeyserModelEngine [build]\">\r\n    <configuration name=\"GeyserModelEngine [build]\" type=\"GradleRunConfiguration\" factoryName=\"Gradle\" temporary=\"true\">\r\n      <ExternalSystemSettings>\r\n        <option name=\"executionName\" />\r\n        <option name=\"externalProjectPath\" value=\"$PROJECT_DIR$\" />\r\n        <option name=\"externalSystemIdString\" value=\"GRADLE\" />\r\n        <option name=\"scriptParameters\" />\r\n        <option name=\"taskDescriptions\">\r\n          <list />\r\n        </option>\r\n        <option name=\"taskNames\">\r\n          <list>\r\n            <option value=\"build\" />\r\n          </list>\r\n        </option>\r\n        <option name=\"vmOptions\" />\r\n      </ExternalSystemSettings>\r\n      <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>\r\n      <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>\r\n      <DebugAllEnabled>false</DebugAllEnabled>\r\n      <RunAsTest>false</RunAsTest>\r\n      <method v=\"2\" />\r\n    </configuration>\r\n    <configuration name=\"GeyserModelEngine [jar]\" type=\"GradleRunConfiguration\" factoryName=\"Gradle\" temporary=\"true\">\r\n      <ExternalSystemSettings>\r\n        <option name=\"executionName\" />\r\n        <option name=\"externalProjectPath\" value=\"$PROJECT_DIR$\" />\r\n        <option name=\"externalSystemIdString\" value=\"GRADLE\" />\r\n        <option name=\"scriptParameters\" />\r\n        <option name=\"taskDescriptions\">\r\n          <list />\r\n        </option>\r\n        <option name=\"taskNames\">\r\n          <list>\r\n            <option value=\"jar\" />\r\n          </list>\r\n        </option>\r\n        <option name=\"vmOptions\" />\r\n      </ExternalSystemSettings>\r\n      <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>\r\n      <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>\r\n      <DebugAllEnabled>false</DebugAllEnabled>\r\n      <RunAsTest>false</RunAsTest>\r\n      <method v=\"2\" />\r\n    </configuration>\r\n    <recent_temporary>\r\n      <list>\r\n        <item itemvalue=\"Gradle.GeyserModelEngine [build]\" />\r\n        <item itemvalue=\"Gradle.GeyserModelEngine [jar]\" />\r\n      </list>\r\n    </recent_temporary>\r\n  </component>\r\n  <component name=\"TaskManager\">\r\n    <task active=\"true\" id=\"Default\" summary=\"Default task\">\r\n      <changelist id=\"ff2e9770-ec88-4715-adeb-b9dbda130e1a\" name=\"Changes\" comment=\"\" />\r\n      <created>1748302633990</created>\r\n      <option name=\"number\" value=\"Default\" />\r\n      <option name=\"presentableId\" value=\"Default\" />\r\n      <updated>1748302633990</updated>\r\n    </task>\r\n    <servers />\r\n  </component>\r\n</project>
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/workspace.xml b/.idea/workspace.xml
+--- a/.idea/workspace.xml	(revision b6425ffa51b4e18318b1d2318db705909064ac55)
++++ b/.idea/workspace.xml	(date 1757196774533)
+@@ -5,7 +5,32 @@
+   </component>
+   <component name="ChangeListManager">
+     <list default="true" id="ff2e9770-ec88-4715-adeb-b9dbda130e1a" name="Changes" comment="">
++      <change afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/listener/BetterModelListener.java" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/listener/ModelEngineListener.java" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/entity/BetterModelEntityData.java" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/entity/EntityData.java" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/model/BetterModelModel.java" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/model/Model.java" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/model/ModelEngineModel.java" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/modelhandler/BetterModelHandler.java" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/modelhandler/ModelEngineHandler.java" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/modelhandler/ModelHandler.java" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/propertyhandler/BetterModelPropertyHandler.java" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/propertyhandler/ModelEnginePropertyHandler.java" afterDir="false" />
++      <change afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/propertyhandler/PropertyHandler.java" afterDir="false" />
+       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
++      <change beforePath="$PROJECT_DIR$/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/build.gradle.kts" afterDir="false" />
++      <change beforePath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/Events/GeyserModelEngineModelSpawn.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/events/GeyserModelEngineModelSpawn.java" afterDir="false" />
++      <change beforePath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/GeyserModelEngine.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/GeyserModelEngine.java" afterDir="false" />
++      <change beforePath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/listener/ModelListener.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/listener/ModelListener.java" afterDir="false" />
++      <change beforePath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/commands/CommandManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/commands/CommandManager.java" afterDir="false" />
++      <change beforePath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/EntityTaskManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/EntityTaskManager.java" afterDir="false" />
++      <change beforePath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/ModelManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/ModelManager.java" afterDir="false" />
++      <change beforePath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/data/ModelEntityData.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/entity/ModelEngineEntityData.java" afterDir="false" />
++      <change beforePath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/runnables/EntityTaskRunnable.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/runnables/EntityTaskRunnable.java" afterDir="false" />
++      <change beforePath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/runnables/UpdateTaskRunnable.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/runnables/UpdateTaskRunnable.java" afterDir="false" />
++      <change beforePath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/util/BooleanPacker.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/util/BooleanPacker.java" afterDir="false" />
++      <change beforePath="$PROJECT_DIR$/src/main/resources/paper-plugin.yml" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/paper-plugin.yml" afterDir="false" />
+     </list>
+     <option name="SHOW_DIALOG" value="false" />
+     <option name="HIGHLIGHT_CONFLICTS" value="true" />
+@@ -57,6 +82,11 @@
+     </option>
+   </component>
+   <component name="Git.Settings">
++    <option name="RECENT_BRANCH_BY_REPOSITORY">
++      <map>
++        <entry key="$PROJECT_DIR$" value="main" />
++      </map>
++    </option>
+     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+   </component>
+   <component name="GradleScriptDefinitionsStorage" workingDir="$PROJECT_DIR$" gradleHome="$USER_HOME$/.gradle/wrapper/dists/gradle-8.12-bin/cetblhg4pflnnks72fxwobvgv/gradle-8.12" javaHome="$USER_HOME$/.jdks/openjdk-21.0.1" gradleVersion="8.12" />
+@@ -87,7 +117,7 @@
+     &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+     &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
++    &quot;git-widget-placeholder&quot;: &quot;bettermodel-support-dev&quot;,
+     &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+     &quot;last_opened_file_path&quot;: &quot;D:/Coding/Forks/Minecraft/GeyserModelEngine&quot;,
+     &quot;project.structure.last.edited&quot;: &quot;Project&quot;,
+Index: src/main/java/re/imc/geysermodelengine/Events/GeyserModelEngineModelSpawn.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package re.imc.geysermodelengine.Events;\r\n\r\npublic class GeyserModelEngineModelSpawn {\r\n\r\n    //Spawn Event\r\n}\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/re/imc/geysermodelengine/Events/GeyserModelEngineModelSpawn.java b/src/main/java/re/imc/geysermodelengine/events/GeyserModelEngineModelSpawn.java
+rename from src/main/java/re/imc/geysermodelengine/Events/GeyserModelEngineModelSpawn.java
+rename to src/main/java/re/imc/geysermodelengine/events/GeyserModelEngineModelSpawn.java
+--- a/src/main/java/re/imc/geysermodelengine/Events/GeyserModelEngineModelSpawn.java	(revision b6425ffa51b4e18318b1d2318db705909064ac55)
++++ b/src/main/java/re/imc/geysermodelengine/events/GeyserModelEngineModelSpawn.java	(date 1757122563078)
+@@ -1,6 +1,25 @@
+-package re.imc.geysermodelengine.Events;
++package re.imc.geysermodelengine.events;
++
++import org.bukkit.event.Event;
++import org.bukkit.event.HandlerList;
++import org.jetbrains.annotations.NotNull;
+ 
+-public class GeyserModelEngineModelSpawn {
++public class GeyserModelEngineModelSpawn extends Event {
++
++    private static final HandlerList handlers = new HandlerList();
+ 
+     //Spawn Event
++
++    public GeyserModelEngineModelSpawn() {
++
++    }
++
++    @Override
++    public @NotNull HandlerList getHandlers() {
++        return handlers;
++    }
++
++    public static HandlerList getHandlerList() {
++        return handlers;
++    }
+ }
+Index: src/main/java/re/imc/geysermodelengine/managers/model/modelhandler/ModelEngineHandler.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/re/imc/geysermodelengine/managers/model/modelhandler/ModelEngineHandler.java b/src/main/java/re/imc/geysermodelengine/managers/model/modelhandler/ModelEngineHandler.java
+new file mode 100644
+--- /dev/null	(date 1757189911379)
++++ b/src/main/java/re/imc/geysermodelengine/managers/model/modelhandler/ModelEngineHandler.java	(date 1757189911379)
+@@ -0,0 +1,69 @@
++package re.imc.geysermodelengine.managers.model.modelhandler;
++
++import com.ticxo.modelengine.api.ModelEngineAPI;
++import com.ticxo.modelengine.api.model.ActiveModel;
++import com.ticxo.modelengine.api.model.ModeledEntity;
++import kr.toxicity.model.api.data.raw.ModelData;
++import org.bukkit.Bukkit;
++import org.bukkit.entity.Entity;
++import re.imc.geysermodelengine.GeyserModelEngine;
++import re.imc.geysermodelengine.listener.ModelEngineListener;
++import re.imc.geysermodelengine.managers.model.entity.EntityData;
++import re.imc.geysermodelengine.managers.model.entity.ModelEngineEntityData;
++import re.imc.geysermodelengine.managers.model.model.Model;
++import re.imc.geysermodelengine.managers.model.model.ModelEngineModel;
++import re.imc.geysermodelengine.managers.model.propertyhandler.PropertyHandler;
++
++import java.util.HashMap;
++import java.util.Map;
++import java.util.Optional;
++
++public class ModelEngineHandler implements ModelHandler {
++
++    @Override
++    public void createModel(GeyserModelEngine plugin, Object modeledEntity, Object activeModel) {
++        ModeledEntity megEntity = (ModeledEntity) modeledEntity;
++        ActiveModel megActiveModel = (ActiveModel) activeModel;
++
++        int entityID = megEntity.getBase().getEntityId();
++
++        PropertyHandler propertyHandler = plugin.getEntityTaskManager().getPropertyHandler();
++        EntityData entityData = new ModelEngineEntityData(plugin, megEntity, megActiveModel);
++
++        Model model = new ModelEngineModel(megActiveModel, this, entityData, propertyHandler);
++
++        Map<Model, EntityData> entityDataCache = plugin.getModelManager().getEntitiesCache().computeIfAbsent(entityID, k -> new HashMap<>());
++
++        for (Map.Entry<Model, EntityData> entry : entityDataCache.entrySet()) {
++            if (entry.getKey() !=  model && entry.getKey().getName().equals(megActiveModel.getBlueprint().getName())) {
++                return;
++            }
++        }
++
++        plugin.getModelManager().getModelEntitiesCache().put(entityID, model);
++        entityDataCache.put(model, entityData);
++    }
++
++    @Override
++    public void processEntities(GeyserModelEngine plugin, Entity entity) {
++        if (plugin.getModelManager().getEntitiesCache().containsKey(entity.getEntityId())) return;
++
++        ModeledEntity modeledEntity = ModelEngineAPI.getModeledEntity(entity);
++        if (modeledEntity == null) return;
++
++        Optional<ActiveModel> model = modeledEntity.getModels().values().stream().findFirst();
++        model.ifPresent(m -> createModel(plugin, modeledEntity, m));
++    }
++
++    @Override
++    public void removeEntities(GeyserModelEngine plugin) {
++        for (Map<Model, EntityData> entities : plugin.getModelManager().getEntitiesCache().values()) {
++            entities.forEach((model, modelEntity) -> modelEntity.getEntity().remove());
++        }
++    }
++
++    @Override
++    public void loadListeners(GeyserModelEngine plugin) {
++        Bukkit.getPluginManager().registerEvents(new ModelEngineListener(plugin), plugin);
++    }
++}
+Index: src/main/java/re/imc/geysermodelengine/managers/model/modelhandler/BetterModelHandler.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/re/imc/geysermodelengine/managers/model/modelhandler/BetterModelHandler.java b/src/main/java/re/imc/geysermodelengine/managers/model/modelhandler/BetterModelHandler.java
+new file mode 100644
+--- /dev/null	(date 1757164959245)
++++ b/src/main/java/re/imc/geysermodelengine/managers/model/modelhandler/BetterModelHandler.java	(date 1757164959245)
+@@ -0,0 +1,29 @@
++package re.imc.geysermodelengine.managers.model.modelhandler;
++
++import org.bukkit.Bukkit;
++import org.bukkit.entity.Entity;
++import re.imc.geysermodelengine.GeyserModelEngine;
++import re.imc.geysermodelengine.listener.BetterModelListener;
++
++public class BetterModelHandler implements ModelHandler {
++
++    @Override
++    public void createModel(GeyserModelEngine plugin, Object modeledEntity, Object activeModel) {
++
++    }
++
++    @Override
++    public void processEntities(GeyserModelEngine plugin, Entity entity) {
++
++    }
++
++    @Override
++    public void removeEntities(GeyserModelEngine plugin) {
++
++    }
++
++    @Override
++    public void loadListeners(GeyserModelEngine plugin) {
++        Bukkit.getPluginManager().registerEvents(new BetterModelListener(plugin), plugin);
++    }
++}
+Index: src/main/java/re/imc/geysermodelengine/util/BooleanPacker.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package re.imc.geysermodelengine.util;\r\n\r\nimport java.util.ArrayList;\r\nimport java.util.Collections;\r\nimport java.util.List;\r\nimport java.util.Map;\r\n\r\npublic class BooleanPacker {\r\n\r\n    private final int MAX_BOOLEANS = 24;\r\n\r\n    public int booleansToInt(List<Boolean> booleans) {\r\n        int result = 0;\r\n        int i = 1;\r\n\r\n        for (boolean b : booleans) {\r\n            if (b) {\r\n                result += i;\r\n            }\r\n            i *= 2;\r\n        }\r\n\r\n        return result;\r\n    }\r\n\r\n    public int mapBooleansToInt(Map<String, Boolean> booleanMap) {\r\n        int result = 0;\r\n        int i = 1;\r\n\r\n        List<String> keys = new ArrayList<>(booleanMap.keySet());\r\n        Collections.sort(keys);\r\n\r\n        for (String key : keys) {\r\n            if (booleanMap.get(key)) {\r\n                result += i;\r\n            }\r\n            i *= 2;\r\n        }\r\n        return result;\r\n    }\r\n\r\n    public List<Integer> booleansToInts(List<Boolean> booleans) {\r\n        List<Integer> results = new ArrayList<>();\r\n        int result = 0;\r\n        int i = 1;\r\n        int i1 = 1;\r\n\r\n        for (boolean b : booleans) {\r\n            if (b) {\r\n                result += i;\r\n            }\r\n            if (i1 % MAX_BOOLEANS == 0 || i1 == booleans.size()) {\r\n                results.add(result);\r\n                result = 0;\r\n                i = 1;\r\n            } else {\r\n                i *= 2;\r\n            }\r\n            i1++;\r\n        }\r\n\r\n        return results;\r\n    }\r\n\r\n    public List<Integer> mapBooleansToInts(Map<String, Boolean> booleanMap) {\r\n        List<String> keys = new ArrayList<>(booleanMap.keySet());\r\n        List<Boolean> booleans = new ArrayList<>();\r\n\r\n        Collections.sort(keys);\r\n\r\n        for (String key : keys) {\r\n            booleans.add(booleanMap.get(key));\r\n        }\r\n        return booleansToInts(booleans);\r\n    }\r\n}\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/re/imc/geysermodelengine/util/BooleanPacker.java b/src/main/java/re/imc/geysermodelengine/util/BooleanPacker.java
+--- a/src/main/java/re/imc/geysermodelengine/util/BooleanPacker.java	(revision b6425ffa51b4e18318b1d2318db705909064ac55)
++++ b/src/main/java/re/imc/geysermodelengine/util/BooleanPacker.java	(date 1757109895583)
+@@ -7,9 +7,9 @@
+ 
+ public class BooleanPacker {
+ 
+-    private final int MAX_BOOLEANS = 24;
++    private static final int MAX_BOOLEANS = 24;
+ 
+-    public int booleansToInt(List<Boolean> booleans) {
++    public static int booleansToInt(List<Boolean> booleans) {
+         int result = 0;
+         int i = 1;
+ 
+@@ -23,7 +23,7 @@
+         return result;
+     }
+ 
+-    public int mapBooleansToInt(Map<String, Boolean> booleanMap) {
++    public static int mapBooleansToInt(Map<String, Boolean> booleanMap) {
+         int result = 0;
+         int i = 1;
+ 
+@@ -39,7 +39,7 @@
+         return result;
+     }
+ 
+-    public List<Integer> booleansToInts(List<Boolean> booleans) {
++    public static List<Integer> booleansToInts(List<Boolean> booleans) {
+         List<Integer> results = new ArrayList<>();
+         int result = 0;
+         int i = 1;
+@@ -62,7 +62,7 @@
+         return results;
+     }
+ 
+-    public List<Integer> mapBooleansToInts(Map<String, Boolean> booleanMap) {
++    public static List<Integer> mapBooleansToInts(Map<String, Boolean> booleanMap) {
+         List<String> keys = new ArrayList<>(booleanMap.keySet());
+         List<Boolean> booleans = new ArrayList<>();
+ 
