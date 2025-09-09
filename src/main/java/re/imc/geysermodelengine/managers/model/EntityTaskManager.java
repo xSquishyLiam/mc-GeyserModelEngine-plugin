@@ -1,9 +1,7 @@
 package re.imc.geysermodelengine.managers.model;
 
 import com.ticxo.modelengine.api.animation.BlueprintAnimation;
-import com.ticxo.modelengine.api.generator.blueprint.BlueprintBone;
 import com.ticxo.modelengine.api.model.ActiveModel;
-import com.ticxo.modelengine.api.model.render.DisplayRenderer;
 import me.zimzaza4.geyserutils.spigot.api.EntityUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -11,12 +9,12 @@ import org.bukkit.entity.Player;
 import org.geysermc.floodgate.api.FloodgateApi;
 import re.imc.geysermodelengine.GeyserModelEngine;
 import re.imc.geysermodelengine.managers.model.entity.EntityData;
-import re.imc.geysermodelengine.managers.model.propertyhandler.BetterModelPropertyHandler;
-import re.imc.geysermodelengine.managers.model.propertyhandler.ModelEnginePropertyHandler;
-import re.imc.geysermodelengine.managers.model.propertyhandler.PropertyHandler;
+import re.imc.geysermodelengine.managers.model.PropertyHandler.BetterModelPropertyHandler;
+import re.imc.geysermodelengine.managers.model.PropertyHandler.ModelEnginePropertyHandler;
+import re.imc.geysermodelengine.managers.model.PropertyHandler.PropertyHandler;
 import re.imc.geysermodelengine.managers.model.entity.ModelEngineEntityData;
+import re.imc.geysermodelengine.managers.model.taskshandler.TaskHandler;
 import re.imc.geysermodelengine.packet.entity.PacketEntity;
-import re.imc.geysermodelengine.runnables.EntityTaskRunnable;
 
 import java.util.*;
 
@@ -30,25 +28,15 @@ public class EntityTaskManager {
         this.plugin = plugin;
 
         if (Bukkit.getPluginManager().getPlugin("ModelEngine") != null) {
-            this.propertyHandler = new ModelEnginePropertyHandler();
+            this.propertyHandler = new ModelEnginePropertyHandler(plugin);
             plugin.getLogger().info("Using ModelEngine property handler!");
         } else if (Bukkit.getPluginManager().getPlugin("BetterModel") != null) {
-            this.propertyHandler = new BetterModelPropertyHandler();
+            this.propertyHandler = new BetterModelPropertyHandler(plugin);
             plugin.getLogger().info("Using BetterModel property handler!");
         } else {
             plugin.getLogger().severe("No supported model engine found!");
             plugin.getServer().getPluginManager().disablePlugin(plugin);
         }
-    }
-
-    public String unstripName(BlueprintBone bone) {
-        String name = bone.getName();
-        if (bone.getBehaviors().get("head") != null) {
-            if (!bone.getBehaviors().get("head").isEmpty()) return "hi_" + name;
-            return "h_" + name;
-        }
-
-        return name;
     }
 
     public void checkViewers(EntityData model, Set<Player> viewers) {
@@ -70,13 +58,13 @@ public class EntityTaskManager {
     }
 
     private void sendSpawnPacket(EntityData model, Player onlinePlayer) {
-        EntityTaskRunnable task = model.getEntityTask();
+        TaskHandler task = model.getEntityTask();
         boolean firstJoined = !plugin.getModelManager().getPlayerJoinedCache().contains(onlinePlayer.getUniqueId());
 
         if (firstJoined) {
-            task.sendEntityData((ModelEngineEntityData) model, onlinePlayer, plugin.getConfigManager().getConfig().getInt("join-send-delay") / 50);
+            task.sendEntityData(model, onlinePlayer, plugin.getConfigManager().getConfig().getInt("join-send-delay") / 50);
         } else {
-            task.sendEntityData((ModelEngineEntityData) model, onlinePlayer, 5);
+            task.sendEntityData(model, onlinePlayer, 5);
         }
     }
 
@@ -95,24 +83,13 @@ public class EntityTaskManager {
         return true;
     }
 
-    public void sendHitBoxToAll(ModelEngineEntityData model) {
+    public void sendHitBoxToAll(EntityData model) {
         for (Player viewer : model.getViewers()) {
             EntityUtils.sendCustomHitBox(viewer, model.getEntity().getEntityId(), 0.01f, 0.01f);
         }
     }
 
-    public void sendHitBox(ModelEngineEntityData model, Player viewer) {
-        float w = 0;
-
-        if (model.getActiveModel().isShadowVisible()) {
-            if (model.getActiveModel().getModelRenderer() instanceof DisplayRenderer displayRenderer) {
-                //    w = displayRenderer.getHitbox().getShadowRadius().get();
-            }
-        }
-
-        EntityUtils.sendCustomHitBox(viewer, model.getEntity().getEntityId(), 0.02f, w);
-    }
-
+    //TODO move this
     public boolean hasAnimation(ModelEngineEntityData model, String animation) {
         ActiveModel activeModel = model.getActiveModel();
         BlueprintAnimation animationProperty = activeModel.getBlueprint().getAnimations().get(animation);

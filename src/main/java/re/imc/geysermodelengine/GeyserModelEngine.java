@@ -53,10 +53,9 @@ public class GeyserModelEngine extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        this.modelManager.removeEntities();
+
         PacketEvents.getAPI().terminate();
-
-        this.modelManager.getModelHandler().removeEntities(this);
-
         CommandAPI.onDisable();
     }
 

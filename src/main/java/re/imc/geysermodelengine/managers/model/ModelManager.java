@@ -7,9 +7,9 @@ import org.bukkit.Bukkit;
 import re.imc.geysermodelengine.GeyserModelEngine;
 import re.imc.geysermodelengine.managers.model.entity.EntityData;
 import re.imc.geysermodelengine.managers.model.model.Model;
-import re.imc.geysermodelengine.managers.model.modelhandler.BetterModelHandler;
-import re.imc.geysermodelengine.managers.model.modelhandler.ModelEngineHandler;
-import re.imc.geysermodelengine.managers.model.modelhandler.ModelHandler;
+import re.imc.geysermodelengine.managers.model.ModelHandler.BetterModelHandler;
+import re.imc.geysermodelengine.managers.model.ModelHandler.ModelEngineHandler;
+import re.imc.geysermodelengine.managers.model.ModelHandler.ModelHandler;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -32,10 +32,10 @@ public class ModelManager {
         this.plugin = plugin;
 
         if (Bukkit.getPluginManager().getPlugin("ModelEngine") != null) {
-            this.modelHandler = new ModelEngineHandler();
+            this.modelHandler = new ModelEngineHandler(plugin);
             plugin.getLogger().info("Using ModelEngine handler!");
         } else if (Bukkit.getPluginManager().getPlugin("BetterModel") != null) {
-            this.modelHandler = new BetterModelHandler();
+            this.modelHandler = new BetterModelHandler(plugin);
             plugin.getLogger().info("Using BetterModel handler!");
         } else {
             plugin.getLogger().severe("No supported model engine found!");
@@ -43,7 +43,13 @@ public class ModelManager {
             return;
         }
 
-        modelHandler.loadListeners(plugin);
+        modelHandler.loadListeners();
+    }
+
+    public void removeEntities() {
+        for (Map<Model, EntityData> entities : entitiesCache.values()) {
+            entities.forEach((model, modelEntity) -> modelEntity.getEntity().remove());
+        }
     }
 
     public ModelHandler getModelHandler() {

@@ -2,8 +2,8 @@ package re.imc.geysermodelengine.managers.model.model;
 
 import com.ticxo.modelengine.api.model.ActiveModel;
 import re.imc.geysermodelengine.managers.model.entity.EntityData;
-import re.imc.geysermodelengine.managers.model.modelhandler.ModelHandler;
-import re.imc.geysermodelengine.managers.model.propertyhandler.PropertyHandler;
+import re.imc.geysermodelengine.managers.model.ModelHandler.ModelHandler;
+import re.imc.geysermodelengine.managers.model.PropertyHandler.PropertyHandler;
 
 public class ModelEngineModel implements Model {
 

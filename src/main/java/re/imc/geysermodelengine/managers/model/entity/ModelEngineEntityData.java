@@ -7,9 +7,8 @@ import com.ticxo.modelengine.api.model.ModeledEntity;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import re.imc.geysermodelengine.GeyserModelEngine;
-import re.imc.geysermodelengine.managers.model.model.Model;
+import re.imc.geysermodelengine.managers.model.taskshandler.ModelEngineTaskHandler;
 import re.imc.geysermodelengine.packet.entity.PacketEntity;
-import re.imc.geysermodelengine.runnables.EntityTaskRunnable;
 
 import java.util.Set;
 
@@ -18,14 +17,12 @@ public class ModelEngineEntityData implements EntityData {
     private final GeyserModelEngine plugin;
 
     private final PacketEntity entity;
-
     private final Set<Player> viewers = Sets.newConcurrentHashSet();
 
     private final ModeledEntity modeledEntity;
-
     private final ActiveModel activeModel;
 
-    private EntityTaskRunnable entityTask;
+    private ModelEngineTaskHandler entityTask;
 
     public ModelEngineEntityData(GeyserModelEngine plugin, ModeledEntity modeledEntity, ActiveModel activeModel) {
         this.plugin = plugin;
@@ -44,7 +41,7 @@ public class ModelEngineEntityData implements EntityData {
     }
 
     public void runEntityTask() {
-        entityTask = new EntityTaskRunnable(plugin, this);
+        entityTask = new ModelEngineTaskHandler(plugin, this);
     }
 
     @Override
@@ -58,12 +55,7 @@ public class ModelEngineEntityData implements EntityData {
     }
 
     @Override
-    public void remove() {
-
-    }
-
-    @Override
-    public EntityTaskRunnable getEntityTask() {
+    public ModelEngineTaskHandler getEntityTask() {
         return entityTask;
     }
 

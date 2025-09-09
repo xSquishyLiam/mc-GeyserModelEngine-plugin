@@ -5,34 +5,31 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="ff2e9770-ec88-4715-adeb-b9dbda130e1a" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/listener/BetterModelListener.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/listener/ModelEngineListener.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/entity/BetterModelEntityData.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/entity/EntityData.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/model/BetterModelModel.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/model/Model.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/model/ModelEngineModel.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/modelhandler/BetterModelHandler.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/modelhandler/ModelEngineHandler.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/modelhandler/ModelHandler.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/propertyhandler/BetterModelPropertyHandler.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/propertyhandler/ModelEnginePropertyHandler.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/propertyhandler/PropertyHandler.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_rebase_[Changes]/shelved.patch" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_rebase_[Changes]1/shelved.patch" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_rebase__Changes_.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_rebase__Changes_1.xml" beforeDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/taskshandler/BetterModelTaskHandler.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/taskshandler/ModelEngineTaskHandler.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/taskshandler/TaskHandler.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/build.gradle.kts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/GeyserModelEngine.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/GeyserModelEngine.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/listener/BetterModelListener.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/listener/BetterModelListener.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/listener/ModelEngineListener.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/listener/ModelEngineListener.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/listener/ModelListener.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/listener/ModelListener.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/commands/CommandManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/commands/CommandManager.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/EntityTaskManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/EntityTaskManager.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/ModelManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/ModelManager.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/data/ModelEntityData.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/entity/ModelEngineEntityData.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/runnables/EntityTaskRunnable.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/runnables/EntityTaskRunnable.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/entity/BetterModelEntityData.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/entity/BetterModelEntityData.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/entity/EntityData.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/entity/EntityData.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/entity/ModelEngineEntityData.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/entity/ModelEngineEntityData.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/model/BetterModelModel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/model/BetterModelModel.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/model/Model.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/model/Model.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/model/ModelEngineModel.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/model/ModelEngineModel.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/modelhandler/BetterModelHandler.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/ModelHandler/BetterModelHandler.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/modelhandler/ModelEngineHandler.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/ModelHandler/ModelEngineHandler.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/modelhandler/ModelHandler.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/ModelHandler/ModelHandler.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/propertyhandler/BetterModelPropertyHandler.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/PropertyHandler/BetterModelPropertyHandler.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/propertyhandler/ModelEnginePropertyHandler.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/PropertyHandler/ModelEnginePropertyHandler.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/propertyhandler/PropertyHandler.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/managers/model/PropertyHandler/PropertyHandler.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/packet/entity/PacketEntity.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/packet/entity/PacketEntity.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/runnables/EntityTaskRunnable.java" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/runnables/UpdateTaskRunnable.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/runnables/UpdateTaskRunnable.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/util/BooleanPacker.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/re/imc/geysermodelengine/util/BooleanPacker.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/resources/paper-plugin.yml" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/paper-plugin.yml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -105,25 +102,26 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "Gradle.Download Sources.executor": "Run",
-    "Gradle.GeyserModelEngine [build].executor": "Run",
-    "Gradle.GeyserModelEngine [jar].executor": "Run",
-    "Maven.GeyserModelEngine [install...].executor": "Run",
-    "Maven.GeyserModelEngine [install].executor": "Run",
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "bettermodel-support-dev",
-    "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "D:/Coding/Forks/Minecraft/GeyserModelEngine",
-    "project.structure.last.edited": "Project",
-    "project.structure.proportion": "0.0",
-    "project.structure.side.proportion": "0.2",
-    "settings.editor.selected.configurable": "reference.settings.project.maven.runner"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Gradle.Build GeyserModelEngine.executor&quot;: &quot;Run&quot;,
+    &quot;Gradle.Download Sources.executor&quot;: &quot;Run&quot;,
+    &quot;Gradle.GeyserModelEngine [build].executor&quot;: &quot;Run&quot;,
+    &quot;Gradle.GeyserModelEngine [jar].executor&quot;: &quot;Run&quot;,
+    &quot;Maven.GeyserModelEngine [install...].executor&quot;: &quot;Run&quot;,
+    &quot;Maven.GeyserModelEngine [install].executor&quot;: &quot;Run&quot;,
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;bettermodel-support-dev&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;D:/Coding/Forks/Minecraft/GeyserModelEngine&quot;,
+    &quot;project.structure.last.edited&quot;: &quot;Project&quot;,
+    &quot;project.structure.proportion&quot;: &quot;0.0&quot;,
+    &quot;project.structure.side.proportion&quot;: &quot;0.2&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;reference.settings.project.maven.runner&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="D:\Coding\Forks\Minecraft\GeyserModelEngine" />

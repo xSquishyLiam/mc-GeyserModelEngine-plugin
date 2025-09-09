@@ -1,7 +1,9 @@
 package re.imc.geysermodelengine.listener;
 
-import kr.toxicity.model.api.event.CreateTrackerEvent;
+import kr.toxicity.model.api.event.CreateEntityTrackerEvent;
+
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import re.imc.geysermodelengine.GeyserModelEngine;
 
@@ -13,8 +15,8 @@ public class BetterModelListener implements Listener {
         this.plugin = plugin;
     }
 
-    @EventHandler
-    public void onModelSpawn(CreateTrackerEvent event) {
-        plugin.getLogger().info(event.getTracker().name());
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onModelSpawn(CreateEntityTrackerEvent event) {
+        plugin.getModelManager().getModelHandler().createModel(event.sourceEntity(), event.getTracker());
     }
 }

@@ -26,7 +26,7 @@ public class ModelEngineListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onAddModel(AddModelEvent event) {
         if (event.isCancelled()) return;
-        plugin.getModelManager().getModelHandler().createModel(plugin, event.getTarget(), event.getModel());
+        plugin.getModelManager().getModelHandler().createModel(event.getTarget(), event.getModel());
     }
 
     // Needs Testing

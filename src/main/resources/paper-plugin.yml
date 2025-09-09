@@ -6,6 +6,7 @@ api-version: '1.21'
 authors:
   - zimzaza4
   - willem.dev
+  - xSquishyLiam
 
 load: STARTUP
 
@@ -19,7 +20,5 @@ dependencies:
       required: true
     ModelEngine:
       required: false
-      join-classpath: true
     BetterModel:
       required: false
-      join-classpath: true

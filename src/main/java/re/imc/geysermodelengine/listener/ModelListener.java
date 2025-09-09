@@ -26,12 +26,12 @@ public class ModelListener implements Listener {
     @EventHandler
     public void onWorldInit(WorldInitEvent event) {
         World world = event.getWorld();
-        world.getEntities().forEach(entity -> plugin.getModelManager().getModelHandler().processEntities(plugin, entity));
+        world.getEntities().forEach(entity -> plugin.getModelManager().getModelHandler().processEntities(entity));
     }
 
     /*
      / xSquishyLiam:
-     / A runDelay make sures the client doesn't see pigs on login due to the client resyncing themselves back to normal
+     / A runDelay makes sure the client doesn't see pigs on login due to the client resyncing themselves back to normal
     */
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
