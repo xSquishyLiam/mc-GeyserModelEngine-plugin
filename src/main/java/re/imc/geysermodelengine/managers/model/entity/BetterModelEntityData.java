@@ -2,6 +2,7 @@ package re.imc.geysermodelengine.managers.model.entity;
 
 import com.github.retrooper.packetevents.protocol.entity.type.EntityTypes;
 import com.google.common.collect.Sets;
+import kr.toxicity.model.api.tracker.EntityTracker;
 import kr.toxicity.model.api.tracker.Tracker;
 import org.bukkit.Location;
 import org.bukkit.entity.Entity;
@@ -21,14 +22,18 @@ public class BetterModelEntityData implements EntityData {
 
     private final Entity entitySource;
     private final Tracker tracker;
+    private final EntityTracker entityTracker;
 
     private BetterModelTaskHandler entityTask;
 
-    public BetterModelEntityData(GeyserModelEngine plugin, Entity entitySource, Tracker tracker) {
+    private boolean hurt;
+
+    public BetterModelEntityData(GeyserModelEngine plugin, Entity entitySource, Tracker tracker, EntityTracker entityTracker) {
         this.plugin = plugin;
 
         this.entitySource = entitySource;
         this.tracker = tracker;
+        this.entityTracker = entityTracker;
         this.entity = new PacketEntity(EntityTypes.PIG, viewers, entitySource.getLocation());
 
         runEntityTask();
@@ -59,11 +64,23 @@ public class BetterModelEntityData implements EntityData {
         return entityTask;
     }
 
+    public void setHurt(boolean hurt) {
+        this.hurt = hurt;
+    }
+
     public Entity getEntitySource() {
         return entitySource;
     }
 
     public Tracker getTracker() {
         return tracker;
+    }
+
+    public EntityTracker getEntityTracker() {
+        return entityTracker;
+    }
+
+    public boolean isHurt() {
+        return hurt;
     }
 }

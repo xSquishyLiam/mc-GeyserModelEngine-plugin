@@ -19,7 +19,7 @@ public class GeyserModelEngineCommandManager implements CommandManagers {
     }
 
     private void registerCommand() {
-        CommandAPICommand geyserModelEngineCommand = new CommandAPICommand(name());
+        CommandAPICommand geyserModelEngineCommand = new CommandAPICommand(getName());
 
         commands.forEach(subCommands -> geyserModelEngineCommand.withSubcommand(subCommands.onCommand()));
 
@@ -27,7 +27,7 @@ public class GeyserModelEngineCommandManager implements CommandManagers {
     }
 
     @Override
-    public String name() {
+    public String getName() {
         return "geysermodelengine";
     }
 

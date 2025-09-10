@@ -11,6 +11,7 @@ import org.jetbrains.annotations.NotNull;
 import re.imc.geysermodelengine.GeyserModelEngine;
 import re.imc.geysermodelengine.managers.model.entity.BetterModelEntityData;
 import re.imc.geysermodelengine.managers.model.entity.EntityData;
+import re.imc.geysermodelengine.managers.model.entity.ModelEngineEntityData;
 import re.imc.geysermodelengine.util.BooleanPacker;
 
 import java.awt.*;
@@ -25,16 +26,30 @@ public class BetterModelPropertyHandler implements PropertyHandler {
         this.plugin = plugin;
     }
 
-    // Other question is how am I meant to get the scale??
+    // Figure out on how to get the scale from BetterModel
     @Override
     public void sendScale(EntityData entityData, Collection<Player> players, float lastScale, boolean firstSend) {
-
+        BetterModelEntityData betterModelEntityData = (BetterModelEntityData) entityData;
     }
 
-    // Now real question how do I get the tint?
     @Override
     public void sendColor(EntityData entityData, Collection<Player> players, Color lastColor, boolean firstSend) {
+        if (players.isEmpty()) return;
 
+        BetterModelEntityData betterModelEntityData = (BetterModelEntityData) entityData;
+
+        Color color = new Color(0xFFFFFF);
+        if (betterModelEntityData.isHurt()) color = new Color(betterModelEntityData.getEntityTracker().damageTintValue());
+
+        if (firstSend) {
+            if (color.equals(lastColor)) return;
+        }
+
+        for (Player player : players) {
+            EntityUtils.sendCustomColor(player, betterModelEntityData.getEntity().getEntityId(), color);
+        }
+
+        betterModelEntityData.setHurt(false);
     }
 
     @Override

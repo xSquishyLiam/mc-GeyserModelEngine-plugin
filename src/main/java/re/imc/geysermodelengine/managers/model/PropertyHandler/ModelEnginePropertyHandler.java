@@ -15,7 +15,6 @@ import re.imc.geysermodelengine.managers.model.entity.ModelEngineEntityData;
 import re.imc.geysermodelengine.util.BooleanPacker;
 
 import java.awt.*;
-import java.lang.reflect.Method;
 import java.util.*;
 import java.util.List;
 
@@ -23,16 +22,8 @@ public class ModelEnginePropertyHandler implements PropertyHandler {
 
     private final GeyserModelEngine plugin;
 
-    private final Method scaleMethod;
-
     public ModelEnginePropertyHandler(GeyserModelEngine plugin) {
         this.plugin = plugin;
-
-        try {
-            this.scaleMethod = ActiveModel.class.getMethod("getScale");
-        } catch (NoSuchMethodException err) {
-            throw new RuntimeException(err);
-        }
     }
 
     @Override
@@ -42,7 +33,7 @@ public class ModelEnginePropertyHandler implements PropertyHandler {
 
             ModelEngineEntityData modelEngineEntityData = (ModelEngineEntityData) modelData;
 
-            Vector3fc scale = (Vector3fc) scaleMethod.invoke(modelEngineEntityData.getActiveModel());
+            Vector3fc scale = modelEngineEntityData.getActiveModel().getScale();
 
             float average = (scale.x() + scale.y() + scale.z()) / 3;
 

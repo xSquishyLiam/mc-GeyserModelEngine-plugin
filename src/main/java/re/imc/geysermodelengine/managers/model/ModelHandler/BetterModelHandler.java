@@ -1,5 +1,7 @@
 package re.imc.geysermodelengine.managers.model.ModelHandler;
 
+import kr.toxicity.model.api.tracker.EntityTracker;
+import kr.toxicity.model.api.tracker.EntityTrackerRegistry;
 import kr.toxicity.model.api.tracker.Tracker;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Entity;
@@ -22,16 +24,16 @@ public class BetterModelHandler implements ModelHandler {
         this.plugin = plugin;
     }
 
-    // Why do you dupe smhhhh
     @Override
     public void createModel(Object... objects) {
         Entity entitySource = (Entity) objects[0];
         Tracker tracker = (Tracker) objects[1];
+        EntityTracker entityTracker = (EntityTracker) objects[2];
 
         int entityID = entitySource.getEntityId();
 
         PropertyHandler propertyHandler = plugin.getEntityTaskManager().getPropertyHandler();
-        EntityData entityData = new BetterModelEntityData(plugin, entitySource, tracker);
+        EntityData entityData = new BetterModelEntityData(plugin, entitySource, tracker, entityTracker);
 
         Model model = new BetterModelModel(tracker, this, entityData, propertyHandler);
 

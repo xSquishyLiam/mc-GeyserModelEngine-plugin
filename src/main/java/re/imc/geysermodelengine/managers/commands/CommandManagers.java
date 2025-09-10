@@ -6,7 +6,13 @@ import java.util.ArrayList;
 
 public interface CommandManagers {
 
-    String name();
+    /**
+     * Gets the name of the command manager
+     */
+    String getName();
 
+    /**
+     * Gets the command manager subcommands
+     */
     ArrayList<SubCommands> getCommands();
 }
